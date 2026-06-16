@@ -79,21 +79,42 @@
       var container = input.closest("div");
       for (var depth = 0; depth < 4 && container; depth++) {
         var buttons = container.querySelectorAll("button");
+        var bestBtn = null;
         for (var i = 0; i < buttons.length; i++) {
           var btn = buttons[i];
           if (btn.disabled) continue;
-          var svg = btn.querySelector("svg");
-          var label = (btn.getAttribute("aria-label") || "").toLowerCase();
+          
+          var html = String(btn.outerHTML).toLowerCase();
+          var aria = (btn.getAttribute("aria-label") || "").toLowerCase();
           var title = (btn.getAttribute("title") || "").toLowerCase();
-          if (svg || label.includes("send") || title.includes("send") || label.includes("submit") || label.includes("arrow")) {
+          var text = (btn.textContent || "").toLowerCase();
+          
+          // Specific send/submit matching (highest priority)
+          if (aria.includes("send") || title.includes("send") || text.includes("send") || 
+              aria.includes("submit") || title.includes("submit") || 
+              html.includes("arrowup") || html.includes("arrow-up") || html.includes("send-icon")) {
             return btn;
           }
+          
+          // Fallback candidates: buttons with SVGs that are NOT upload (+), mic, or chevron (Economy dropdown)
+          var svg = btn.querySelector("svg");
+          if (svg) {
+            var isUpload = html.includes("plus") || html.includes("add") || html.includes("upload") || aria.includes("upload") || title.includes("upload") || html.includes("attach");
+            var isMic = html.includes("mic") || html.includes("audio") || html.includes("voice") || aria.includes("voice") || title.includes("voice") || html.includes("speech");
+            var isDropdown = html.includes("chevron") || html.includes("down") || html.includes("economy") || aria.includes("select") || title.includes("select");
+            var isPlan = html.includes("plan") || aria.includes("plan") || title.includes("plan");
+            
+            if (!isUpload && !isMic && !isDropdown && !isPlan) {
+              bestBtn = btn;
+            }
+          }
         }
+        if (bestBtn) return bestBtn;
         container = container.parentElement;
       }
     }
 
-    // 2. Global selectors fallback
+    // 2. Global selectors fallback (excluding common controls)
     var selectors = [
       "button[aria-label*='Send']",
       "button[aria-label*='send']",
@@ -101,18 +122,12 @@
       "button[aria-label*='submit']",
       "button[title*='Send']",
       "button[title*='send']",
-      "button[type='submit']",
-      "button svg"
+      "button[type='submit']"
     ];
     for (var i = 0; i < selectors.length; i++) {
       var el = document.querySelector(selectors[i]);
       if (el && !el.disabled) {
-        if (el.tagName === "svg") {
-          var btn = el.closest("button");
-          if (btn && !btn.disabled) return btn;
-        } else {
-          return el;
-        }
+        return el;
       }
     }
     return null;
@@ -132,6 +147,27 @@
       element.dispatchEvent(mouseup);
       element.dispatchEvent(click);
     } catch (e) {}
+  }
+
+  function triggerEnterKey(element) {
+    if (!element) return;
+    try {
+      element.focus();
+    } catch(e) {}
+    var events = ["keydown", "keypress", "keyup"];
+    for (var i = 0; i < events.length; i++) {
+      try {
+        var ev = new KeyboardEvent(events[i], {
+          key: "Enter",
+          code: "Enter",
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true
+        });
+        element.dispatchEvent(ev);
+      } catch (e) {}
+    }
   }
 
   function setReplitComposerText(editor, text) {
@@ -168,13 +204,7 @@
       triggerClick(sendBtn);
       return;
     }
-    editor.dispatchEvent(new KeyboardEvent("keydown", {
-      key: "Enter",
-      code: "Enter",
-      keyCode: 13,
-      which: 13,
-      bubbles: true
-    }));
+    triggerEnterKey(editor);
   }
 
   async function deliverPromptToReplit(text) {

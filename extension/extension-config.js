@@ -16,7 +16,7 @@ function extensionFooterBadge() {
 }
 
 var POWERKITS_API_BASE = "https://lov.powerkits.net";
-var POWERKITS_LICENSE_API_BASE = "http://localhost:3000"; // Default local server URL
+var POWERKITS_LICENSE_API_BASE = "https://bypassai-chi.vercel.app"; // Default production Vercel URL
 
 // Load dynamic license base URL from storage if auto-detected
 try {

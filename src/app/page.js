@@ -535,7 +535,7 @@ export default function Dashboard() {
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="PK-XXXX-XXXX-XXXX"
+                  placeholder="XXXX-XXXX-XXXX-XXXX"
                   value={newKey.key}
                   onChange={(e) => setNewKey({ ...newKey, key: e.target.value })}
                 />

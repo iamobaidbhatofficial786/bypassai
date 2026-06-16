@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { findKey } from '@/lib/db';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',

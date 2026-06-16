@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { listActiveSessions, deleteSession } from '@/lib/db';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to authenticate admin token
 function verifyAdmin(req) {
   const authHeader = req.headers.get('authorization');

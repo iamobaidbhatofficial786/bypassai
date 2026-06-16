@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { findKey, saveKey, saveSession, getSystemSettings } from '@/lib/db';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // Enable CORS for Chrome Extension requests
 function corsHeaders() {
   return {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { listKeys, saveKey, deleteKey, findKey } from '@/lib/db';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to authenticate admin token
 function verifyAdmin(req) {
   const authHeader = req.headers.get('authorization');
@@ -38,11 +40,11 @@ export async function POST(req) {
     const body = await req.json().catch(() => ({}));
     let { key, user_name, status, expires_at, validity_minutes, max_devices, role } = body;
 
-    // Generate random key if not provided (Format: PK-XXXX-XXXX-XXXX)
+    // Generate random key if not provided (Format: XXXX-XXXX-XXXX-XXXX)
     if (!key) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       const randStr = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-      key = `PK-${randStr(4)}-${randStr(4)}-${randStr(4)}`;
+      key = `${randStr(4)}-${randStr(4)}-${randStr(4)}-${randStr(4)}`;
     } else {
       key = String(key).trim().toUpperCase();
     }

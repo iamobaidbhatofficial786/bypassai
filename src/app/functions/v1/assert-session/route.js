@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { findKey, findSession, saveSession, getSystemSettings } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',

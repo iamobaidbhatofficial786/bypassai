@@ -26,17 +26,23 @@
   (function setupBypassGuard() {
     function enforceLicense() {
       if (typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE) {
-        setPkCreditBypass(true);
+        if (document.documentElement.getAttribute("data-ql-bypass") !== "1") {
+          setPkCreditBypass(true);
+        }
         return;
       }
       chrome.storage.local.get(["ql_license_valid", "ql_license_key"], function (res) {
         var licensed = !!(res.ql_license_valid && typeof resolveTeamLicenseKey === "function" && resolveTeamLicenseKey(res.ql_license_key));
         if (!licensed) {
-          deactivatePkCreditBypass();
+          if (document.documentElement.getAttribute("data-ql-bypass") === "1" || localStorage.getItem("__ql_bypass_active") === "1") {
+            deactivatePkCreditBypass();
+          }
         } else {
           try {
             if (localStorage.getItem("__ql_bypass_active") === "1") {
-              activatePkCreditBypass();
+              if (document.documentElement.getAttribute("data-ql-bypass") !== "1") {
+                activatePkCreditBypass();
+              }
             }
           } catch (e) {}
         }

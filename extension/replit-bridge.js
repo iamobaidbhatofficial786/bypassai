@@ -10,28 +10,97 @@
   }
 
   function findReplitInput() {
+    // 1. Check all textareas, inputs and divs for Replit Agent placeholders
+    var candidates = document.querySelectorAll("textarea, input, div[contenteditable='true']");
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
+      
+      // Filter out code editors
+      var className = String(el.className || "").toLowerCase();
+      var id = String(el.id || "").toLowerCase();
+      if (className.includes("monaco") || className.includes("cm-") || className.includes("editor") || className.includes("inputarea")) {
+        continue;
+      }
+      
+      var placeholder = (el.getAttribute("placeholder") || "").toLowerCase();
+      var label = (el.getAttribute("aria-label") || "").toLowerCase();
+      var title = (el.getAttribute("title") || "").toLowerCase();
+      
+      if (placeholder.includes("make") || placeholder.includes("test") || placeholder.includes("iterate") || 
+          placeholder.includes("ask") || placeholder.includes("agent") || placeholder.includes("message") ||
+          label.includes("make") || label.includes("ask") || label.includes("prompt") ||
+          title.includes("make") || title.includes("ask")) {
+        return el;
+      }
+    }
+
+    // 2. Try specific selectors with placeholders
     var selectors = [
-      "textarea[placeholder*='message']",
-      "textarea[placeholder*='Message']",
+      "textarea[placeholder*='Make']",
+      "textarea[placeholder*='make']",
+      "textarea[placeholder*='test']",
+      "textarea[placeholder*='iterate']",
+      "div[placeholder*='Make']",
+      "div[placeholder*='make']",
       "textarea[placeholder*='Ask']",
       "textarea[placeholder*='ask']",
-      "textarea[placeholder*='Agent']",
-      "textarea[placeholder*='agent']",
-      "div[contenteditable='true'][role='textbox']",
-      "textarea"
+      "div[placeholder*='Ask']",
+      "div[placeholder*='ask']",
+      "textarea[placeholder*='message']",
+      "textarea[placeholder*='Message']",
+      "div[placeholder*='message']",
+      "div[placeholder*='Message']"
     ];
     for (var i = 0; i < selectors.length; i++) {
       var el = document.querySelector(selectors[i]);
       if (el) return el;
     }
+
+    // 3. Fallback: find a textarea or input that is likely the chat input (not the code editor)
+    var textareas = document.querySelectorAll("textarea, input");
+    for (var i = 0; i < textareas.length; i++) {
+      var ta = textareas[i];
+      var className = String(ta.className || "").toLowerCase();
+      if (!className.includes("monaco") && !className.includes("cm-") && !className.includes("editor") && !className.includes("inputarea")) {
+        var rect = ta.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          return ta;
+        }
+      }
+    }
+
     return null;
   }
 
   function findReplitSendButton() {
+    var input = findReplitInput();
+    if (input) {
+      // 1. Look for a button inside the same parent container
+      var container = input.closest("div");
+      for (var depth = 0; depth < 4 && container; depth++) {
+        var buttons = container.querySelectorAll("button");
+        for (var i = 0; i < buttons.length; i++) {
+          var btn = buttons[i];
+          if (btn.disabled) continue;
+          var svg = btn.querySelector("svg");
+          var label = (btn.getAttribute("aria-label") || "").toLowerCase();
+          var title = (btn.getAttribute("title") || "").toLowerCase();
+          if (svg || label.includes("send") || title.includes("send") || label.includes("submit") || label.includes("arrow")) {
+            return btn;
+          }
+        }
+        container = container.parentElement;
+      }
+    }
+
+    // 2. Global selectors fallback
     var selectors = [
-      "button[aria-label='Send']",
-      "button[aria-label='Send message']",
+      "button[aria-label*='Send']",
+      "button[aria-label*='send']",
+      "button[aria-label*='Submit']",
+      "button[aria-label*='submit']",
       "button[title*='Send']",
+      "button[title*='send']",
       "button[type='submit']",
       "button svg"
     ];
@@ -49,11 +118,27 @@
     return null;
   }
 
+  function triggerClick(element) {
+    if (!element) return;
+    try {
+      element.focus();
+      element.click();
+    } catch (e) {}
+    try {
+      var mousedown = new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window });
+      var mouseup = new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window });
+      var click = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+      element.dispatchEvent(mousedown);
+      element.dispatchEvent(mouseup);
+      element.dispatchEvent(click);
+    } catch (e) {}
+  }
+
   function setReplitComposerText(editor, text) {
     editor.focus();
     var tag = (editor.tagName || "").toLowerCase();
-    if (tag === "textarea") {
-      var proto = window.HTMLTextAreaElement && window.HTMLTextAreaElement.prototype;
+    if (tag === "textarea" || tag === "input") {
+      var proto = (tag === "textarea" ? window.HTMLTextAreaElement : window.HTMLInputElement) && (tag === "textarea" ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype);
       var setter = proto && Object.getOwnPropertyDescriptor(proto, "value");
       if (setter && setter.set) setter.set.call(editor, text);
       else editor.value = text;
@@ -77,10 +162,10 @@
       throw new Error("Replit chat input not found. Open your Repl on replit.com and wait for the workspace to load.");
     }
     setReplitComposerText(editor, text);
-    await new Promise(function (r) { setTimeout(r, 120); });
+    await new Promise(function (r) { setTimeout(r, 150); });
     var sendBtn = findReplitSendButton();
     if (sendBtn) {
-      sendBtn.click();
+      triggerClick(sendBtn);
       return;
     }
     editor.dispatchEvent(new KeyboardEvent("keydown", {

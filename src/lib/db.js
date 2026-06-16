@@ -11,7 +11,7 @@ const LOCAL_DB_PATH = isVercel
 function initLocalDb() {
   if (!fs.existsSync(LOCAL_DB_PATH)) {
     try {
-      fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ keys: {}, sessions: {} }, null, 2), 'utf-8');
+      fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ keys: {}, sessions: {}, settings: {} }, null, 2), 'utf-8');
     } catch (e) {
       console.error("Failed to initialize local DB:", e);
     }
@@ -70,6 +70,15 @@ export async function getDb() {
       },
       async saveSessions(sessions) {
         await kvRequest('SET', 'pk_sessions', JSON.stringify(sessions));
+      },
+
+      // Settings management
+      async getSettings() {
+        const data = await kvRequest('GET', 'pk_settings');
+        return data ? JSON.parse(data) : {};
+      },
+      async saveSettings(settings) {
+        await kvRequest('SET', 'pk_settings', JSON.stringify(settings));
       }
     };
   } else {
@@ -96,6 +105,17 @@ export async function getDb() {
         initLocalDb();
         const data = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf-8'));
         data.sessions = sessions;
+        fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+      },
+      async getSettings() {
+        initLocalDb();
+        const data = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
+        return JSON.parse(data).settings || {};
+      },
+      async saveSettings(settings) {
+        initLocalDb();
+        const data = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf-8'));
+        data.settings = settings;
         fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
       }
     };
@@ -206,4 +226,21 @@ export async function listActiveSessions() {
   const db = await getDb();
   const sessions = await db.getSessions();
   return Object.values(sessions).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
+
+export async function getSystemSettings() {
+  const db = await getDb();
+  if (typeof db.getSettings === 'function') {
+    return await db.getSettings();
+  }
+  return {};
+}
+
+export async function saveSystemSettings(settings) {
+  const db = await getDb();
+  if (typeof db.saveSettings === 'function') {
+    await db.saveSettings(settings);
+    return settings;
+  }
+  return {};
 }

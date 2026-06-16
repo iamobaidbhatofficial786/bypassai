@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { findKey, findSession, saveSession } from '@/lib/db';
+import { findKey, findSession, saveSession, getSystemSettings } from '@/lib/db';
 
 function corsHeaders() {
   return {
@@ -15,6 +15,14 @@ export async function OPTIONS() {
 
 export async function POST(req) {
   try {
+    const settings = await getSystemSettings().catch(() => ({}));
+    if (settings && settings.system_locked) {
+      return NextResponse.json(
+        { allowed: false, reason: 'system_locked', message: 'The extension is temporarily locked by the administrator.' },
+        { headers: corsHeaders() }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const { license_key, session_id, device_id } = body;
 

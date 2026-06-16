@@ -587,7 +587,7 @@
   document.querySelector('.sp-logout-btn').addEventListener('click', () => {
     if(heartbeatInterval) clearInterval(heartbeatInterval);
     syncCreditBypassOnLovableTabs(false);
-    chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status"], async () => {
+    pkSafeClearLicenseStorage(() => {
       userName = null; expiresAt = null; licenseStatus = null; sessionId = null;
       showLicenseGate();
     });
@@ -1116,7 +1116,7 @@
     if (typeof pkRevokeLicenseStorage === "function") {
       pkRevokeLicenseStorage().then(after);
     } else {
-      chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status","ql_validity_minutes"], after);
+      pkSafeClearLicenseStorage(after);
     }
   }
 

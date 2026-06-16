@@ -91,16 +91,20 @@
       window.__pkSetCreditBypass(false);
     }
     return new Promise(function (resolve) {
-      chrome.storage.local.remove([
-        "ql_license_valid",
-        "ql_license_key",
-        "ql_session_id",
-        "ql_user_name",
-        "ql_expires_at",
-        "ql_activated_at",
-        "ql_license_status",
-        "ql_validity_minutes"
-      ], resolve);
+      if (typeof pkSafeClearLicenseStorage === "function") {
+        pkSafeClearLicenseStorage(resolve);
+      } else {
+        chrome.storage.local.remove([
+          "ql_license_valid",
+          "ql_license_key",
+          "ql_session_id",
+          "ql_user_name",
+          "ql_expires_at",
+          "ql_activated_at",
+          "ql_license_status",
+          "ql_validity_minutes"
+        ], resolve);
+      }
     });
   }
 

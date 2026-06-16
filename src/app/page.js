@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState({ total: 0, active: 0, trial: 0, online: 0 });
+  const [isSystemLocked, setIsSystemLocked] = useState(false);
 
   // UI state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -51,21 +52,24 @@ export default function Dashboard() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       
-      const [keysRes, sessionsRes] = await Promise.all([
+      const [keysRes, sessionsRes, settingsRes] = await Promise.all([
         fetch('/api/keys', { headers }),
-        fetch('/api/sessions', { headers })
+        fetch('/api/sessions', { headers }),
+        fetch('/api/settings', { headers })
       ]);
 
-      if (keysRes.status === 401 || sessionsRes.status === 401) {
+      if (keysRes.status === 401 || sessionsRes.status === 401 || settingsRes.status === 401) {
         handleLogout();
         return;
       }
 
       const keysData = await keysRes.json();
       const sessionsData = await sessionsRes.json();
+      const settingsData = await settingsRes.json();
 
       setKeys(Array.isArray(keysData) ? keysData : []);
       setSessions(Array.isArray(sessionsData) ? sessionsData : []);
+      setIsSystemLocked(!!settingsData.system_locked);
       
       // Calculate Stats
       const total = keysData.length || 0;
@@ -108,6 +112,33 @@ export default function Dashboard() {
     setIsLoggedIn(false);
     setKeys([]);
     setSessions([]);
+  };
+
+  const handleToggleSystemLock = async (locked) => {
+    const confirmMsg = locked 
+      ? "Are you sure you want to LOCK the extension for ALL users? Active sessions will be terminated and heartbeats will be blocked."
+      : "Are you sure you want to UNLOCK the extension and allow user licensing?";
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ system_locked: locked })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsSystemLocked(!!data.system_locked);
+        fetchData();
+      } else {
+        alert("Failed to update system lock status.");
+      }
+    } catch (err) {
+      alert("Network error updating system lock status.");
+    }
   };
 
   const handleCreateKeySubmit = async (e) => {
@@ -301,7 +332,41 @@ export default function Dashboard() {
         <div className="dashboard-logo">
           <span>🛡</span> ByPass Ai Licensing Hub
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {/* System Lock Toggle */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.6rem', 
+            background: isSystemLocked ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 255, 255, 0.03)', 
+            padding: '0.4rem 0.8rem', 
+            borderRadius: '8px', 
+            border: isSystemLocked ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(255,255,255,0.06)',
+            transition: 'all 0.3s ease'
+          }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: isSystemLocked ? '#ef4444' : '#94a3b8' }}>
+              {isSystemLocked ? '🔒 System Locked' : '🔓 System Active'}
+            </span>
+            <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', margin: 0, cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={isSystemLocked} 
+                onChange={(e) => handleToggleSystemLock(e.target.checked)} 
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{ 
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
+                backgroundColor: isSystemLocked ? '#ef4444' : '#334155', 
+                transition: '.3s', borderRadius: '34px' 
+              }}>
+                <span style={{
+                  position: 'absolute', height: '14px', width: '14px', left: isSystemLocked ? '18px' : '4px', bottom: '3px',
+                  backgroundColor: 'white', transition: '.3s', borderRadius: '50%'
+                }} />
+              </span>
+            </label>
+          </div>
+
           <button onClick={fetchData} className="btn btn-secondary">
             🔄 Refresh
           </button>

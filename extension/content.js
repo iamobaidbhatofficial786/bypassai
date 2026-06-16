@@ -641,7 +641,7 @@ function showMainUI(box){
       logoutBtn.addEventListener("click", () => {
         if(qlHeartbeatInterval) clearInterval(qlHeartbeatInterval);
         setPkCreditBypass(false);
-        chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status"], () => {
+        pkSafeClearLicenseStorage(() => {
           qlUserName = null; qlExpiresAt = null; qlActivatedAt = null; qlLicenseStatus = null; qlSessionId = null;
           showLicenseGate(box);
         });
@@ -1072,7 +1072,7 @@ function qlRevokeAndShowLicenseGate(message) {
   if (typeof pkRevokeLicenseStorage === "function") {
     pkRevokeLicenseStorage().then(after);
   } else {
-    chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status","ql_validity_minutes"], after);
+    pkSafeClearLicenseStorage(after);
   }
 }
 
@@ -1450,7 +1450,7 @@ function handleLicenseExpired(){
       setTimeout(() => {
         overlay.remove();
         setPkCreditBypass(false);
-        chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status","ql_validity_minutes"], () => {
+        pkSafeClearLicenseStorage(() => {
           if(box) showLicenseGate(box);
         });
       }, 300);

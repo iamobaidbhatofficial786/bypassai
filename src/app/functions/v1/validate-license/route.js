@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { findKey, saveKey, saveSession } from '@/lib/db';
+import { findKey, saveKey, saveSession, getSystemSettings } from '@/lib/db';
 import crypto from 'crypto';
 
 // Enable CORS for Chrome Extension requests
@@ -17,6 +17,14 @@ export async function OPTIONS() {
 
 export async function POST(req) {
   try {
+    const settings = await getSystemSettings().catch(() => ({}));
+    if (settings && settings.system_locked) {
+      return NextResponse.json(
+        { valid: false, message: 'The extension is temporarily locked by the administrator.' },
+        { headers: corsHeaders() }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const { license_key, device_id } = body;
     const maxDevicesLimit = body.max_devices || body.device_limit || body.allowed_devices || 2;

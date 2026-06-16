@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState({ total: 0, active: 0, trial: 0, online: 0 });
   const [isSystemLocked, setIsSystemLocked] = useState(false);
+  const [dbEphemeralWarning, setDbEphemeralWarning] = useState(false);
 
   // UI state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -70,6 +71,7 @@ export default function Dashboard() {
       setKeys(Array.isArray(keysData) ? keysData : []);
       setSessions(Array.isArray(sessionsData) ? sessionsData : []);
       setIsSystemLocked(!!settingsData.system_locked);
+      setDbEphemeralWarning(!!settingsData.db_ephemeral_warning);
       
       // Calculate Stats
       const total = keysData.length || 0;
@@ -375,6 +377,27 @@ export default function Dashboard() {
           </button>
         </div>
       </header>
+
+      {dbEphemeralWarning && (
+        <div style={{
+          background: 'rgba(245, 158, 11, 0.15)',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          color: '#f59e0b',
+          padding: '1rem',
+          borderRadius: '12px',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.8rem',
+          fontSize: '0.95rem',
+          fontWeight: '500'
+        }}>
+          <span style={{ fontSize: '1.3rem' }}>⚠️</span>
+          <span>
+            <strong>Database is running in EPHEMERAL mode:</strong> License keys are stored in a temporary container file and will be lost/reset frequently on Vercel. Please link Vercel KV (Redis) to your project settings using <code>KV_REST_API_URL</code> and <code>KV_REST_API_TOKEN</code> for persistent storage.
+          </span>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <section className="stats-grid">

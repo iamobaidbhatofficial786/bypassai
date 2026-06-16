@@ -230,16 +230,26 @@ export async function listActiveSessions() {
 
 export async function getSystemSettings() {
   const db = await getDb();
+  let settings = {};
   if (typeof db.getSettings === 'function') {
-    return await db.getSettings();
+    settings = await db.getSettings();
   }
-  return {};
+  
+  // Inject database environment warning info
+  const isVercel = !!(process.env.VERCEL || process.env.NOW_BUILDER || process.env.LAMBDA_TASK_ROOT);
+  const isKv = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  settings.db_ephemeral_warning = isVercel && !isKv;
+  
+  return settings;
 }
 
 export async function saveSystemSettings(settings) {
   const db = await getDb();
   if (typeof db.saveSettings === 'function') {
-    await db.saveSettings(settings);
+    // Strip warnings before saving to keep config clean
+    const toSave = { ...settings };
+    delete toSave.db_ephemeral_warning;
+    await db.saveSettings(toSave);
     return settings;
   }
   return {};

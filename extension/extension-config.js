@@ -193,9 +193,11 @@ function pkSafeSetLicenseStorage(data, cb) {
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
     chrome.storage.local.set({ ql_authorized_write: true }, function() {
       chrome.storage.local.set(data, function() {
-        chrome.storage.local.remove(["ql_authorized_write"], function() {
-          if (cb) cb();
-        });
+        setTimeout(function() {
+          chrome.storage.local.remove(["ql_authorized_write"], function() {
+            if (cb) cb();
+          });
+        }, 500);
       });
     });
   } else {
@@ -217,9 +219,11 @@ function pkSafeClearLicenseStorage(cb) {
         "ql_license_status",
         "ql_validity_minutes"
       ], function() {
-        chrome.storage.local.remove(["ql_authorized_write"], function() {
-          if (cb) cb();
-        });
+        setTimeout(function() {
+          chrome.storage.local.remove(["ql_authorized_write"], function() {
+            if (cb) cb();
+          });
+        }, 500);
       });
     });
   } else {

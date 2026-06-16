@@ -10,27 +10,42 @@
   }
 
   function findReplitInput() {
-    // 1. Check all textareas, inputs and divs for Replit Agent placeholders
+    // 1. Check all textareas, inputs and contenteditable divs
     var candidates = document.querySelectorAll("textarea, input, div[contenteditable='true']");
     for (var i = 0; i < candidates.length; i++) {
       var el = candidates[i];
       
-      // Filter out code editors
-      var className = String(el.className || "").toLowerCase();
-      var id = String(el.id || "").toLowerCase();
-      if (className.includes("monaco") || className.includes("cm-") || className.includes("editor") || className.includes("inputarea")) {
-        continue;
-      }
+      // Get placeholder text including CodeMirror fallbacks
+      var placeholder = "";
+      try {
+        placeholder = el.getAttribute("placeholder") || el.getAttribute("data-placeholder") || el.getAttribute("aria-placeholder") || "";
+        if (!placeholder && el.classList.contains("cm-content")) {
+          var editorEl = el.closest(".cm-editor");
+          if (editorEl) {
+            var phEl = editorEl.querySelector(".cm-placeholder");
+            if (phEl) placeholder = phEl.textContent || "";
+          }
+        }
+      } catch (e) {}
+      placeholder = String(placeholder).toLowerCase();
+
+      var label = String(el.getAttribute("aria-label") || "").toLowerCase();
+      var title = String(el.getAttribute("title") || "").toLowerCase();
       
-      var placeholder = (el.getAttribute("placeholder") || "").toLowerCase();
-      var label = (el.getAttribute("aria-label") || "").toLowerCase();
-      var title = (el.getAttribute("title") || "").toLowerCase();
-      
-      if (placeholder.includes("make") || placeholder.includes("test") || placeholder.includes("iterate") || 
+      // Check if it has agent keywords (highest override priority)
+      var hasAgentKeywords = placeholder.includes("make") || placeholder.includes("test") || placeholder.includes("iterate") || 
           placeholder.includes("ask") || placeholder.includes("agent") || placeholder.includes("message") ||
           label.includes("make") || label.includes("ask") || label.includes("prompt") ||
-          title.includes("make") || title.includes("ask")) {
+          title.includes("make") || title.includes("ask");
+
+      if (hasAgentKeywords) {
         return el;
+      }
+
+      // Filter out code editors if no agent keywords match
+      var className = String(el.className || "").toLowerCase();
+      if (className.includes("monaco") || className.includes("cm-") || className.includes("editor") || className.includes("inputarea")) {
+        continue;
       }
     }
 

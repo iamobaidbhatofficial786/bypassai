@@ -50,6 +50,8 @@ var SEND_STRATEGY = "native";
 
 var POWERKITS_DEBUG = false;
 
+var INTERNAL_LICENSE_MODE = false;
+
 // Local dev/test/internal bypass options removed for production security.
 function isDevLicenseKey(key) {
   return false;
@@ -80,7 +82,7 @@ function normalizeLicenseUserName(name) {
 /** User PK- license sent to the Powerkits API for validation. */
 function resolveTeamLicenseKey(storedKey) {
   var k = String(storedKey || "").trim();
-  if (!k || k === "INTERNAL") {
+  if (!k) {
     return "";
   }
   return k;

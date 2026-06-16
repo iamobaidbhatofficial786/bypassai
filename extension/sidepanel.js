@@ -31,7 +31,7 @@
   }
 
   function ensureInternalSessionLocal() {
-    if (!INTERNAL_LICENSE_MODE) return Promise.resolve();
+    if (!(typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE)) return Promise.resolve();
     return new Promise(function(resolve) {
       chrome.storage.local.get(["ql_license_valid", "ql_session_id", "ql_user_name", "ql_license_key"], function(res) {
         if (res.ql_license_valid && res.ql_session_id) {
@@ -1604,7 +1604,7 @@
   let spHbConflictCount = 0;
 
   function startHeartbeat(key) {
-    if (INTERNAL_LICENSE_MODE) return;
+    if ((typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE) || key === "INTERNAL") return;
     if(heartbeatInterval) clearInterval(heartbeatInterval);
     spHbConflictCount = 0;
     heartbeatInterval = setInterval(async () => {

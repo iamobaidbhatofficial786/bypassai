@@ -1086,7 +1086,7 @@ function qlHandleLicenseInvalid(data) {
 }
 
 function updateTrialCountdown(){
-  if (INTERNAL_LICENSE_MODE) return;
+  if (typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE) return;
   const el = document.getElementById("ql-trial-countdown");
   if(!el) return;
 
@@ -1368,7 +1368,7 @@ function removeShieldOverlay(){
 let qlHbConflictCount = 0;
 
 function startHeartbeat(licenseKey){
-  if(INTERNAL_LICENSE_MODE) return;
+  if ((typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE) || licenseKey === "INTERNAL") return;
   if(qlHeartbeatInterval) clearInterval(qlHeartbeatInterval);
   qlHbConflictCount = 0;
 
@@ -1420,7 +1420,7 @@ function startHeartbeat(licenseKey){
 let qlExpiredHandled = false;
 
 function handleLicenseExpired(){
-  if (INTERNAL_LICENSE_MODE) return;
+  if (typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE) return;
   if(qlExpiredHandled) return;
   qlExpiredHandled = true;
   if (typeof pkInvalidateAssertCache === "function") pkInvalidateAssertCache();

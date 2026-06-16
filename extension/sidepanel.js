@@ -7,18 +7,20 @@
   try { chrome.storage.local.set({ ql_sidebar_mode: true }); } catch (e) {}
 
   const API_BASE = typeof POWERKITS_API_BASE !== "undefined" ? POWERKITS_API_BASE : GRINGOW_API_BASE;
-  const LICENSE_API_BASE = typeof POWERKITS_LICENSE_API_BASE !== "undefined" && POWERKITS_LICENSE_API_BASE ? POWERKITS_LICENSE_API_BASE : API_BASE;
+  function getLicenseApiBase() {
+    return typeof POWERKITS_LICENSE_API_BASE !== "undefined" && POWERKITS_LICENSE_API_BASE ? POWERKITS_LICENSE_API_BASE : API_BASE;
+  }
   const API_KEY = typeof POWERKITS_API_KEY !== "undefined" ? POWERKITS_API_KEY : GRINGOW_API_KEY;
   const PROXY_CMD_URL = (typeof window !== "undefined" && window.PROXY_COMMAND_URL)
     || (API_BASE + "/functions/v1/proxy-command");
 
-  const VALIDATE_URL = LICENSE_API_BASE + "/functions/v1/validate-license";
+  function getValidateUrl() { return getLicenseApiBase() + "/functions/v1/validate-license"; }
   const OPTIMIZE_URL = API_BASE + "/functions/v1/optimize-prompt";
   const NOTIFICATIONS_URL = API_BASE + "/rest/v1/notifications?select=*&order=created_at.desc&limit=20";
   const PACKAGES_URL = API_BASE + "/rest/v1/packages?select=*&is_active=eq.true&order=sort_order.asc";
   const VERSIONS_URL = API_BASE + "/rest/v1/extension_versions?select=version,changelog,file_path,is_alert_active&order=created_at.desc&limit=1&is_alert_active=eq.true";
-  const USER_ROLES_URL = LICENSE_API_BASE + "/rest/v1/user_roles?select=role";
-  const LICENSES_URL = LICENSE_API_BASE + "/rest/v1/licenses?select=user_id";
+  function getUserRolesUrl() { return getLicenseApiBase() + "/rest/v1/user_roles?select=role"; }
+  function getLicensesUrl() { return getLicenseApiBase() + "/rest/v1/licenses?select=user_id"; }
   const CREATE_PROJECT_URL = API_BASE + "/functions/v1/create-lovable-project";
   const REMOVE_WATERMARK_URL = API_BASE + "/functions/v1/remove-watermark";
   const PUBLISH_PROJECT_URL = API_BASE + "/functions/v1/publish-project";
@@ -80,7 +82,7 @@
   }
 
   function activateInternalSession() {
-    return bgFetch(VALIDATE_URL, {
+    return bgFetch(getValidateUrl(), {
       method: "POST",
       headers: apiHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
@@ -648,7 +650,7 @@
   // --- Reseller Role Check ---
   async function checkResellerRole() {
     try {
-      const data = await bgFetch(USER_ROLES_URL + "&user_id=eq." + (await getUserId()), { method: "GET", headers: { apikey: API_KEY } });
+      const data = await bgFetch(getUserRolesUrl() + "&user_id=eq." + (await getUserId()), { method: "GET", headers: { apikey: API_KEY } });
       if (data && Array.isArray(data) && data.some(r => r.role === 'reseller' || r.role === 'admin')) {
         isResellerUser = true;
         const btn = document.getElementById('sp-reseller-btn');
@@ -661,7 +663,7 @@
     return new Promise(r => chrome.storage.local.get(["ql_license_key"], async res => {
       if (!res.ql_license_key) return r('');
       try {
-        const data = await bgFetch(LICENSES_URL + "&license_key=eq." + encodeURIComponent(res.ql_license_key) + "&limit=1", { method: "GET", headers: { apikey: API_KEY } });
+        const data = await bgFetch(getLicensesUrl() + "&license_key=eq." + encodeURIComponent(res.ql_license_key) + "&limit=1", { method: "GET", headers: { apikey: API_KEY } });
         if (data && data.length && data[0].user_id) r(data[0].user_id);
         else r('');
       } catch(e) { r(''); }
@@ -687,7 +689,7 @@
       if (typeof isDevLicenseKey === "function" && isDevLicenseKey(key)) {
         data = mockDevLicenseResponse(key, { device_id: deviceId });
       } else {
-        data = await bgFetch(VALIDATE_URL, { method: "POST", headers: apiHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ license_key: key, device_id: deviceId, max_devices: 2, device_limit: 2, allowed_devices: 2 }) });
+        data = await bgFetch(getValidateUrl(), { method: "POST", headers: apiHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ license_key: key, device_id: deviceId, max_devices: 2, device_limit: 2, allowed_devices: 2 }) });
       }
       if(data.valid) {
         sessionId = data.session_id;
@@ -1616,7 +1618,7 @@
         if (typeof isDevLicenseKey === "function" && isDevLicenseKey(key)) {
           data = mockDevLicenseResponse(key, { session_id: sessionId, device_id: deviceId });
         } else {
-          data = await bgFetch(VALIDATE_URL, { method: "POST", headers: apiHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ license_key: key, session_id: sessionId, heartbeat: true, device_id: deviceId, max_devices: 2, device_limit: 2, allowed_devices: 2 }) });
+          data = await bgFetch(getValidateUrl(), { method: "POST", headers: apiHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ license_key: key, session_id: sessionId, heartbeat: true, device_id: deviceId, max_devices: 2, device_limit: 2, allowed_devices: 2 }) });
         }
         if(!data.valid) {
           var decision = typeof pkShouldLockoutFromValidation === "function"
@@ -1890,7 +1892,7 @@
               if (typeof isDevLicenseKey === "function" && isDevLicenseKey(res.ql_license_key)) {
                 data = mockDevLicenseResponse(res.ql_license_key, { session_id: sessionId, device_id: deviceId });
               } else {
-                data = await bgFetch(VALIDATE_URL, { method: "POST", headers: apiHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ license_key: res.ql_license_key, session_id: sessionId, heartbeat: true, device_id: deviceId, max_devices: 2, device_limit: 2, allowed_devices: 2 }) });
+                data = await bgFetch(getValidateUrl(), { method: "POST", headers: apiHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ license_key: res.ql_license_key, session_id: sessionId, heartbeat: true, device_id: deviceId, max_devices: 2, device_limit: 2, allowed_devices: 2 }) });
               }
               if(data.valid) {
                 userName = normalizeLicenseUserName(data.user_name || userName);

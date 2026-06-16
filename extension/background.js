@@ -278,6 +278,27 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
   }
   if (tab.url.indexOf("chatgpt.com") !== -1 || tab.url.indexOf("chat.openai.com") !== -1) {
     chrome.storage.local.set({ chatgpt_tab_ready: true });
+    return;
+  }
+
+  // Auto-detect and record license server from tab URL and title
+  try {
+    var isLocalhost = tab.url.indexOf("localhost:3000") !== -1 || tab.url.indexOf("127.0.0.1:3000") !== -1;
+    var isVercel = tab.url.indexOf(".vercel.app") !== -1;
+    var isBypassAiTitle = tab.title && (tab.title.toLowerCase().indexOf("bypass ai") !== -1 || tab.title.toLowerCase().indexOf("bypassai") !== -1);
+    
+    if ((isLocalhost || isVercel) && isBypassAiTitle) {
+      var origin = new URL(tab.url).origin;
+      chrome.storage.local.get(["ql_license_api_base"], function(res) {
+        if (!res || res.ql_license_api_base !== origin) {
+          chrome.storage.local.set({ ql_license_api_base: origin }, function() {
+            console.log("[Background] Auto-detected and updated license server API base:", origin);
+          });
+        }
+      });
+    }
+  } catch(e) {
+    console.error("[Background] Error in license server auto-detection:", e);
   }
 });
 

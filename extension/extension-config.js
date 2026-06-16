@@ -16,7 +16,18 @@ function extensionFooterBadge() {
 }
 
 var POWERKITS_API_BASE = "https://lov.powerkits.net";
-var POWERKITS_LICENSE_API_BASE = "http://localhost:3000"; // Replace with your Vercel deployment URL in production
+var POWERKITS_LICENSE_API_BASE = "https://bypassai-chi.vercel.app"; // Default production Vercel URL
+
+// Load dynamic license base URL from storage if auto-detected
+try {
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(["ql_license_api_base"], function(res) {
+      if (res && res.ql_license_api_base) {
+        POWERKITS_LICENSE_API_BASE = res.ql_license_api_base;
+      }
+    });
+  }
+} catch (e) {}
 var POWERKITS_API_KEY = "pk_lov_ext_a8f3c21e9d4b7f0e6a2c5d8b1e4f7a0c";
 
 /** @deprecated Use POWERKITS_* — kept for older script references */

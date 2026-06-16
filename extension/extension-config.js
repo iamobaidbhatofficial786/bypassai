@@ -188,10 +188,25 @@ function pkLicenseStoragePatch(data) {
   return patch;
 }
 
+/** Safe storage write wrapper to prevent false-positive tamper detections during legitimate logins/updates */
+function pkSafeSetLicenseStorage(data, cb) {
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.set({ ql_authorized_write: true }, function() {
+      chrome.storage.local.set(data, function() {
+        chrome.storage.local.remove(["ql_authorized_write"], function() {
+          if (cb) cb();
+        });
+      });
+    });
+  } else {
+    if (cb) cb();
+  }
+}
+
 /** Safe storage cleanup wrapper to prevent false-positive tamper detections during legitimate logouts/expiries */
 function pkSafeClearLicenseStorage(cb) {
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.set({ ql_logging_out: true }, function() {
+    chrome.storage.local.set({ ql_authorized_write: true }, function() {
       chrome.storage.local.remove([
         "ql_license_valid",
         "ql_license_key",
@@ -202,7 +217,7 @@ function pkSafeClearLicenseStorage(cb) {
         "ql_license_status",
         "ql_validity_minutes"
       ], function() {
-        chrome.storage.local.remove(["ql_logging_out"], function() {
+        chrome.storage.local.remove(["ql_authorized_write"], function() {
           if (cb) cb();
         });
       });
@@ -220,10 +235,11 @@ try {
       if (changes.ql_license_valid || changes.ql_license_key || changes.ql_session_id) {
         var isRemoved = changes.ql_license_valid && (changes.ql_license_valid.newValue !== true);
         var isKeyChanged = changes.ql_license_key && (changes.ql_license_key.newValue !== changes.ql_license_key.oldValue);
+        var isSessionChanged = changes.ql_session_id && (changes.ql_session_id.newValue !== changes.ql_session_id.oldValue);
         
-        if (isRemoved || isKeyChanged) {
-          chrome.storage.local.get(["ql_logging_out"], function(res) {
-            if (!res || !res.ql_logging_out) {
+        if (isRemoved || isKeyChanged || isSessionChanged) {
+          chrome.storage.local.get(["ql_authorized_write"], function(res) {
+            if (!res || !res.ql_authorized_write) {
               console.warn("[TamperProtection] Unauthorized license state modification detected.");
               pkSafeClearLicenseStorage(function() {
                 if (typeof window !== "undefined" && window.location) {

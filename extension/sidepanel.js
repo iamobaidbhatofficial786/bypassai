@@ -695,7 +695,7 @@
         sessionId = data.session_id;
         userName = normalizeLicenseUserName(data.user_name);
         spApplyLicenseApiData(data);
-        chrome.storage.local.set(Object.assign({
+        pkSafeSetLicenseStorage(Object.assign({
           ql_license_valid: true,
           ql_license_key: key,
           ql_session_id: data.session_id,
@@ -1898,7 +1898,7 @@
                 userName = normalizeLicenseUserName(data.user_name || userName);
                 spApplyLicenseApiData(data);
                 sessionId = data.session_id || sessionId;
-                chrome.storage.local.set(Object.assign({ ql_user_name: userName, ql_session_id: sessionId }, typeof pkLicenseStoragePatch === "function" ? pkLicenseStoragePatch(data) : {}));
+                pkSafeSetLicenseStorage(Object.assign({ ql_user_name: userName, ql_session_id: sessionId }, typeof pkLicenseStoragePatch === "function" ? pkLicenseStoragePatch(data) : {}));
                 const nameEl = document.getElementById('sp-name'); if(nameEl) nameEl.textContent = userName;
                 updateCountdown();
                 syncCreditBypassOnLovableTabs(true);

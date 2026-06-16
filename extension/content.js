@@ -455,7 +455,7 @@ function _buildFloatingUI(){
               qlUserName = normalizeLicenseUserName(data.user_name || qlUserName);
               qlApplyLicenseApiData(data);
               qlSessionId = data.session_id || qlSessionId;
-              chrome.storage.local.set(Object.assign({ ql_user_name: qlUserName, ql_session_id: qlSessionId }, typeof pkLicenseStoragePatch === "function" ? pkLicenseStoragePatch(data) : {}));
+              pkSafeSetLicenseStorage(Object.assign({ ql_user_name: qlUserName, ql_session_id: qlSessionId }, typeof pkLicenseStoragePatch === "function" ? pkLicenseStoragePatch(data) : {}));
               const nameEl = document.querySelector(".ql-profile-name");
               if(nameEl) nameEl.textContent = normalizeLicenseUserName(qlUserName);
               updateTrialCountdown();
@@ -531,7 +531,7 @@ async function validateLicense(){
       qlApplyLicenseApiData(data);
       qlOnlineCount = data.online_count || 0;
 
-      chrome.storage.local.set(Object.assign({
+      pkSafeSetLicenseStorage(Object.assign({
         ql_license_valid: true,
         ql_license_key: key,
         ql_session_id: data.session_id,

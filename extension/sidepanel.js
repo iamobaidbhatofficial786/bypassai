@@ -1140,14 +1140,14 @@
     const el = document.getElementById('sp-countdown');
     // Always clear any previous ticking interval so a removed/changed expiry can't linger.
     if (spCountdownInterval) { clearInterval(spCountdownInterval); spCountdownInterval = null; }
-    // No expiry (unlimited license) — hide the countdown entirely.
+    // No expiry (unlimited license) — show a permanent status bar
     if(!expiresAt) {
       if (validityMinutes && el) {
         el.style.display = 'flex';
-        el.innerHTML = '<span style="color:var(--ql-text-muted);font-size:12px">⏳ Trial: ' + validityMinutes + ' min after activation</span>';
+        el.innerHTML = '<div class="sp-countdown-row"><span>⏳</span><span class="sp-countdown-label">Trial:</span><span class="sp-countdown-time">' + validityMinutes + ' min after activation</span></div>';
       } else if (el) {
-        el.style.display = 'none';
-        el.innerHTML = '';
+        el.style.display = 'flex';
+        el.innerHTML = '<div class="sp-countdown-row"><span>♾️</span><span class="sp-countdown-label">License Expiry:</span><span class="sp-countdown-time" style="color:var(--ql-success)">Lifetime (Active)</span></div>';
       }
       return;
     }

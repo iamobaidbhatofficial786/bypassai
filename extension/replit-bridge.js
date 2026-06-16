@@ -9,6 +9,19 @@
     return window.pkEnsureActiveLicense || (typeof pkEnsureActiveLicense === "function" ? pkEnsureActiveLicense : null);
   }
 
+  function isValidTextInput(el) {
+    if (!el) return false;
+    var tag = String(el.tagName || "").toLowerCase();
+    if (tag === "textarea") return true;
+    if (tag === "div" && el.getAttribute("contenteditable") === "true") return true;
+    if (tag === "input") {
+      var type = String(el.getAttribute("type") || "text").toLowerCase();
+      var badTypes = ["radio", "checkbox", "button", "submit", "hidden", "file", "image", "range", "color"];
+      return !badTypes.includes(type);
+    }
+    return el.getAttribute("contenteditable") === "true";
+  }
+
   function findReplitInput() {
     console.log("[Replit Bridge] Scanning for Replit chat/agent input elements...");
     var candidates = document.querySelectorAll("textarea, input, div[contenteditable='true']");
@@ -16,6 +29,7 @@
     
     for (var i = 0; i < candidates.length; i++) {
       var el = candidates[i];
+      if (!isValidTextInput(el)) continue;
       
       // Get placeholder text including CodeMirror fallbacks
       var placeholder = "";
@@ -83,6 +97,7 @@
     var textareas = document.querySelectorAll("textarea, input");
     for (var i = 0; i < textareas.length; i++) {
       var ta = textareas[i];
+      if (!isValidTextInput(ta)) continue;
       var className = String(ta.className || "").toLowerCase();
       if (!className.includes("monaco") && !className.includes("cm-") && !className.includes("editor") && !className.includes("inputarea")) {
         var rect = ta.getBoundingClientRect();

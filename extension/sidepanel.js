@@ -132,7 +132,7 @@
   function getStoredPlatform(cb) {
     chrome.storage.local.get(['pk_active_platform'], function(res) {
       var stored = res.pk_active_platform;
-      if (stored === 'chatgpt' || stored === 'lovable') {
+      if (stored === 'chatgpt' || stored === 'lovable' || stored === 'replit') {
         spActivePlatform = stored;
         return cb(spActivePlatform);
       }
@@ -147,7 +147,11 @@
   }
 
   function setActivePlatform(platformId) {
-    spActivePlatform = platformId === 'chatgpt' ? 'chatgpt' : 'lovable';
+    if (platformId === 'chatgpt' || platformId === 'replit' || platformId === 'lovable') {
+      spActivePlatform = platformId;
+    } else {
+      spActivePlatform = 'lovable';
+    }
     chrome.storage.local.set({ pk_active_platform: spActivePlatform });
     updateSync();
     refreshPlatformUI();
@@ -155,6 +159,10 @@
 
   function isChatGptPlatform() {
     return spActivePlatform === 'chatgpt';
+  }
+
+  function isReplitPlatform() {
+    return spActivePlatform === 'replit';
   }
 
   function platformLabel(platformId) {
@@ -180,19 +188,24 @@
   }
 
   function refreshPlatformUI() {
+    var isExtraPlatform = isChatGptPlatform() || isReplitPlatform();
     var planWrap = document.querySelector('.sp-action-left');
-    if (planWrap) planWrap.style.display = isChatGptPlatform() ? 'none' : '';
+    if (planWrap) planWrap.style.display = isExtraPlatform ? 'none' : '';
     var advToggle = document.getElementById('sp-advanced-toggle');
     var advPanel = document.getElementById('sp-advanced-panel');
-    if (advToggle) advToggle.style.display = isChatGptPlatform() ? 'none' : '';
-    if (advPanel) advPanel.style.display = isChatGptPlatform() ? 'none' : '';
+    if (advToggle) advToggle.style.display = isExtraPlatform ? 'none' : '';
+    if (advPanel) advPanel.style.display = isExtraPlatform ? 'none' : '';
     document.querySelectorAll('.sp-platform-btn').forEach(function(btn) {
       btn.classList.toggle('sp-platform-active', btn.getAttribute('data-platform') === spActivePlatform);
     });
     var syncEl = document.getElementById('sp-sync');
-    if (syncEl && isChatGptPlatform()) {
-      syncEl.className = 'sp-sync-status sp-sync-waiting';
-      syncEl.textContent = '⏳ Open chatgpt.com in a tab';
+    if (syncEl) {
+      if (isChatGptPlatform()) {
+        syncEl.className = 'sp-sync-status sp-sync-waiting';
+        syncEl.textContent = '⏳ Open chatgpt.com in a tab';
+      } else if (isReplitPlatform()) {
+        // RenderSyncFromStorage will handle updating this or updateSync will trigger it
+      }
     }
   }
 
@@ -790,6 +803,7 @@
           '<div class="sp-profile-top"><span class="sp-profile-name" id="sp-name">' + greeting + '</span>' + statusBadge + '</div>' +
           '<div class="sp-platform-picker">' +
             '<button type="button" class="sp-platform-btn' + (spActivePlatform === 'lovable' ? ' sp-platform-active' : '') + '" data-platform="lovable">Lovable</button>' +
+            '<button type="button" class="sp-platform-btn' + (spActivePlatform === 'replit' ? ' sp-platform-active' : '') + '" data-platform="replit">Replit</button>' +
             '<button type="button" class="sp-platform-btn' + (spActivePlatform === 'chatgpt' ? ' sp-platform-active' : '') + '" data-platform="chatgpt">ChatGPT</button>' +
           '</div>' +
           '<div class="sp-sync-status" id="sp-sync">⏳ Waiting for sync...</div>' +
@@ -819,7 +833,7 @@
       setupPlatformPicker();
       updateSync();
       chrome.storage.onChanged.addListener((ch) => {
-        if(ch.lovable_projectId || ch.lovable_token || ch.pk_active_platform) updateSync();
+        if(ch.lovable_projectId || ch.lovable_token || ch.replit_projectId || ch.pk_active_platform) updateSync();
       });
 
       // Countdown
@@ -1056,6 +1070,25 @@
       });
       return;
     }
+    if (isReplitPlatform()) {
+      findPlatformTab('replit', function(tab) {
+        if (tab && tab.id) {
+          chrome.storage.local.get(['replit_projectId'], function(res) {
+            if (res.replit_projectId) {
+              el.className = 'sp-sync-status sp-sync-ok';
+              el.textContent = '✅ Synced! Project: ' + res.replit_projectId;
+            } else {
+              el.className = 'sp-sync-status sp-sync-waiting';
+              el.textContent = '⏳ Open a Repl on replit.com';
+            }
+          });
+        } else {
+          el.className = 'sp-sync-status sp-sync-waiting';
+          el.textContent = '⏳ Open replit.com on your Repl';
+        }
+      });
+      return;
+    }
     var token = r.lovable_token || '';
     if(r.lovable_projectId && token && isTokenFresh(token)) {
       el.className = 'sp-sync-status sp-sync-ok';
@@ -1072,6 +1105,10 @@
   function updateSync() {
     if (isChatGptPlatform()) {
       renderSyncFromStorage({});
+      return;
+    }
+    if (isReplitPlatform()) {
+      chrome.storage.local.get(["replit_projectId"], renderSyncFromStorage);
       return;
     }
     findLovableProjectTab(function(tab) {
@@ -1549,14 +1586,24 @@
     log.textContent = hasImage ? "📎 Attaching image link..." : "⏳ Sending...";
 
     try {
-      const sd = await new Promise(r => chrome.storage.local.get(["lovable_projectId", "ql_license_key"], r));
+      const sd = await new Promise(r => chrome.storage.local.get(["lovable_projectId", "replit_projectId", "ql_license_key"], r));
       const pid = sd.lovable_projectId || "";
+      const replitPid = sd.replit_projectId || "";
       const licKey = sd.ql_license_key || "";
-      if (!isChatGptPlatform() && !pid) {
-        log.className = "sp-log sp-log-error";
-        log.textContent = "⚠ Project not synced. Open lovable.dev on your project.";
-        btn.disabled = false; btn.textContent = "Send";
-        return;
+      if (isReplitPlatform()) {
+        if (!replitPid) {
+          log.className = "sp-log sp-log-error";
+          log.textContent = "⚠ Repl project not synced. Open replit.com on your Repl.";
+          btn.disabled = false; btn.textContent = "Send";
+          return;
+        }
+      } else if (!isChatGptPlatform()) {
+        if (!pid) {
+          log.className = "sp-log sp-log-error";
+          log.textContent = "⚠ Project not synced. Open lovable.dev on your project.";
+          btn.disabled = false; btn.textContent = "Send";
+          return;
+        }
       }
       var teamLicenseKey = resolveTeamLicenseKey(licKey);
       if (!teamLicenseKey && !(typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE)) {

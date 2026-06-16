@@ -20,7 +20,9 @@
     "https://*.chatgpt.com/*",
     "https://chat.openai.com/*",
     "https://lov.powerkits.net/*",
-    "https://*.vercel.app/*"
+    "https://*.vercel.app/*",
+    "https://replit.com/*",
+    "https://*.replit.com/*"
   ],
   "action": {
     "default_title": "Lovable Powerkits",
@@ -88,6 +90,21 @@
         "license-guard.js",
         "user-messages.js",
         "chatgpt-bridge.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://replit.com/*",
+        "https://*.replit.com/*"
+      ],
+      "js": [
+        "extension-config.js",
+        "platform-config.js",
+        "hwFingerprint.js",
+        "license-guard.js",
+        "user-messages.js",
+        "replit-bridge.js"
       ],
       "run_at": "document_idle"
     }

@@ -31,6 +31,21 @@ var PLATFORMS = {
     ],
     needsProjectSync: false,
     lovableFeatures: false
+  },
+  replit: {
+    id: "replit",
+    label: "Replit",
+    tabUrls: ["*://replit.com/*", "*://*.replit.com/*"],
+    bridgeFiles: [
+      "extension-config.js",
+      "platform-config.js",
+      "hwFingerprint.js",
+      "license-guard.js",
+      "user-messages.js",
+      "replit-bridge.js"
+    ],
+    needsProjectSync: true,
+    lovableFeatures: false
   }
 };
 
@@ -39,6 +54,7 @@ function pkPlatformFromUrl(url) {
   if (!u) return null;
   if (u.indexOf("lovable.dev") !== -1) return "lovable";
   if (u.indexOf("chatgpt.com") !== -1 || u.indexOf("chat.openai.com") !== -1) return "chatgpt";
+  if (u.indexOf("replit.com") !== -1) return "replit";
   return null;
 }
 

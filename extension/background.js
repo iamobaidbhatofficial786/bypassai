@@ -182,6 +182,8 @@ async function deliverPromptViaTab(message, platformId) {
   if (!tab || !tab.id) {
     if (platformId === "chatgpt") {
       throw new Error("Open a ChatGPT chat at chatgpt.com, then try again.");
+    } else if (platformId === "replit") {
+      throw new Error("Open Replit at replit.com, then try again.");
     }
     throw new Error("Open your Lovable project on lovable.dev (project URL), then try again.");
   }
@@ -198,6 +200,8 @@ async function deliverPromptViaTab(message, platformId) {
     } catch (e) {
       if (platformId === "chatgpt") {
         throw new Error("Could not attach to the ChatGPT tab. Refresh chatgpt.com and try again.");
+      } else if (platformId === "replit") {
+        throw new Error("Could not attach to the Replit tab. Refresh the replit.com page and try again.");
       }
       throw new Error("Could not attach to the Lovable tab. Refresh the project page and try again.");
     }

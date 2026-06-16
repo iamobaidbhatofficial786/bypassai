@@ -24,22 +24,49 @@
 
   function findReplitInput() {
     console.log("[Replit Bridge] Scanning for Replit chat/agent input elements...");
-    var candidates = document.querySelectorAll("textarea, input, [contenteditable]");
-    console.log("[Replit Bridge] Found " + candidates.length + " candidate elements on page.");
     
+    // 1. Visual text-based search (highest priority)
+    var textKeywords = ["make, test, iterate", "make, test", "iterate...", "ask a question", "ask agent"];
+    var allTags = document.querySelectorAll("div, span, p, label, cm-placeholder, .cm-placeholder");
+    for (var i = 0; i < allTags.length; i++) {
+      var el = allTags[i];
+      if (el.isContentEditable) continue;
+      
+      var text = (el.textContent || "").trim().toLowerCase();
+      for (var k = 0; k < textKeywords.length; k++) {
+        if (text.includes(textKeywords[k])) {
+          console.log("[Replit Bridge] Found placeholder text '" + textKeywords[k] + "' in element:", el);
+          var parent = el.parentElement;
+          for (var depth = 0; depth < 5 && parent; depth++) {
+            var editable = parent.querySelector("textarea, input, [contenteditable]");
+            if (editable && isValidTextInput(editable)) {
+              console.log("[Replit Bridge] SUCCESS: Found input relative to visual placeholder text:", editable);
+              return editable;
+            }
+            parent = parent.parentElement;
+          }
+        }
+      }
+    }
+
+    // 2. Direct attribute/property scan (fallback)
+    var candidates = document.querySelectorAll("textarea, input, [contenteditable]");
     for (var i = 0; i < candidates.length; i++) {
       var el = candidates[i];
       if (!isValidTextInput(el)) continue;
       
-      // Get placeholder text including CodeMirror fallbacks
       var placeholder = "";
       try {
         placeholder = el.getAttribute("placeholder") || el.getAttribute("data-placeholder") || el.getAttribute("aria-placeholder") || "";
-        if (!placeholder && el.classList.contains("cm-content")) {
-          var editorEl = el.closest(".cm-editor");
-          if (editorEl) {
-            var phEl = editorEl.querySelector(".cm-placeholder");
-            if (phEl) placeholder = phEl.textContent || "";
+        if (!placeholder) {
+          var parent = el.parentElement;
+          for (var depth = 0; depth < 3 && parent; depth++) {
+            var phEl = parent.querySelector(".cm-placeholder, [class*='placeholder']");
+            if (phEl) {
+              placeholder = phEl.textContent || "";
+              break;
+            }
+            parent = parent.parentElement;
           }
         }
       } catch (e) {}
@@ -49,9 +76,6 @@
       var title = String(el.getAttribute("title") || "").toLowerCase();
       var className = String(el.className || "").toLowerCase();
       
-      console.log("[Replit Bridge] Candidate [" + i + "]: tag=" + el.tagName + ", classes='" + className + "', placeholder='" + placeholder + "', label='" + label + "', title='" + title + "'");
-
-      // Check if it has agent keywords (highest override priority)
       var hasAgentKeywords = placeholder.includes("make") || placeholder.includes("test") || placeholder.includes("iterate") || 
           placeholder.includes("ask") || placeholder.includes("agent") || placeholder.includes("message") ||
           label.includes("make") || label.includes("ask") || label.includes("prompt") ||
@@ -68,32 +92,7 @@
       }
     }
 
-    // 2. Try specific selectors with placeholders
-    var selectors = [
-      "textarea[placeholder*='Make']",
-      "textarea[placeholder*='make']",
-      "textarea[placeholder*='test']",
-      "textarea[placeholder*='iterate']",
-      "div[placeholder*='Make']",
-      "div[placeholder*='make']",
-      "textarea[placeholder*='Ask']",
-      "textarea[placeholder*='ask']",
-      "div[placeholder*='Ask']",
-      "div[placeholder*='ask']",
-      "textarea[placeholder*='message']",
-      "textarea[placeholder*='Message']",
-      "div[placeholder*='message']",
-      "div[placeholder*='Message']"
-    ];
-    for (var i = 0; i < selectors.length; i++) {
-      var el = document.querySelector(selectors[i]);
-      if (el) {
-        console.log("[Replit Bridge] SUCCESS: Matched selector:", selectors[i], el);
-        return el;
-      }
-    }
-
-    // 3. Fallback: find a textarea or input that is likely the chat input (not the code editor)
+    // 3. Fallback: find a textarea or input that is likely the chat input
     var textareas = document.querySelectorAll("textarea, input");
     for (var i = 0; i < textareas.length; i++) {
       var ta = textareas[i];
@@ -104,6 +103,21 @@
         if (rect.width > 0 && rect.height > 0) {
           console.log("[Replit Bridge] SUCCESS: Selected fallback textarea/input:", ta);
           return ta;
+        }
+      }
+    }
+
+    // 4. Fallback 4: find any contenteditable element that is likely the chat panel input (small height)
+    var editables = document.querySelectorAll("[contenteditable]");
+    for (var i = 0; i < editables.length; i++) {
+      var ed = editables[i];
+      if (!isValidTextInput(ed)) continue;
+      var className = String(ed.className || "").toLowerCase();
+      if (!className.includes("monaco") && !className.includes("editor") && !className.includes("inputarea")) {
+        var rect = ed.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0 && rect.height < 150) {
+          console.log("[Replit Bridge] SUCCESS: Selected fallback contenteditable element:", ed);
+          return ed;
         }
       }
     }

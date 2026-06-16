@@ -56,68 +56,8 @@ function syncPkCreditBypassFromStorage() {
     window.__pkSyncCreditBypass();
     return;
   }
-  if (INTERNAL_LICENSE_MODE) {
-    setPkCreditBypass(true);
-    return;
-  }
   chrome.storage.local.get(["ql_license_valid", "ql_license_key"], function (res) {
     setPkCreditBypass(!!(res.ql_license_valid && resolveTeamLicenseKey(res.ql_license_key)));
-  });
-}
-
-function activateInternalSession() {
-  return bgFetch(VALIDATE_URL, {
-    method: "POST",
-    headers: apiHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({
-      license_key: "INTERNAL",
-      session_id: qlSessionId,
-      device_id: qlDeviceId,
-      max_devices: 2,
-      device_limit: 2,
-      allowed_devices: 2
-    })
-  }).then(function(data) {
-    if (!data || !data.valid) {
-      throw new Error((data && data.message) || "Internal activation failed");
-    }
-    qlSessionId = data.session_id || qlSessionId;
-    qlUserName = normalizeLicenseUserName(data.user_name || qlUserName);
-    qlApplyLicenseApiData(data);
-    setPkCreditBypass(true);
-    return new Promise(function(resolve) {
-      chrome.storage.local.set(Object.assign({
-        ql_license_valid: true,
-        ql_license_key: "INTERNAL",
-        ql_session_id: qlSessionId,
-        ql_user_name: qlUserName
-      }, typeof pkLicenseStoragePatch === "function" ? pkLicenseStoragePatch(data) : {}), function() { resolve(data); });
-    });
-  });
-}
-
-/** Internal mode: avoid repeated validate-license calls; mirror Supabase session_id locally. */
-function ensureInternalSessionLocal() {
-  if (!INTERNAL_LICENSE_MODE) return Promise.resolve();
-  return new Promise(function(resolve) {
-    chrome.storage.local.get(["ql_license_valid", "ql_session_id", "ql_user_name", "ql_license_key"], function(res) {
-      if (res.ql_license_valid && res.ql_session_id) {
-        qlSessionId = res.ql_session_id;
-        qlUserName = normalizeLicenseUserName(res.ql_user_name);
-        qlExpiresAt = res.ql_expires_at || null;
-        return resolve();
-      }
-      var sid = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
-      qlSessionId = sid;
-      qlUserName = normalizeLicenseUserName(qlUserName);
-      qlExpiresAt = null;
-      chrome.storage.local.set(
-        typeof powerkitsInternalSessionStorage === "function"
-          ? powerkitsInternalSessionStorage(sid, qlUserName)
-          : gringowInternalSessionStorage(sid, qlUserName),
-        function() { resolve(); }
-      );
-    });
   });
 }
 
@@ -491,41 +431,23 @@ function _buildFloatingUI(){
 
     document.body.appendChild(box);
 
-    if(INTERNAL_LICENSE_MODE || res.ql_license_valid){
-      if(INTERNAL_LICENSE_MODE && !res.ql_license_valid) {
-        try {
-          await ensureInternalSessionLocal();
-        } catch(e) {
-          console.error("[QL] Internal session setup failed", e);
-          showLicenseGate(box);
-          return;
-        }
-      } else {
-        qlUserName = normalizeLicenseUserName(res.ql_user_name);
-        qlExpiresAt = res.ql_expires_at || null;
-        qlActivatedAt = res.ql_activated_at || null;
-        qlLicenseStatus = res.ql_license_status || null;
-        qlValidityMinutes = res.ql_validity_minutes != null ? res.ql_validity_minutes : null;
-        qlSessionId = res.ql_session_id || null;
-      }
+    if(res.ql_license_valid){
+      qlUserName = normalizeLicenseUserName(res.ql_user_name);
+      qlExpiresAt = res.ql_expires_at || null;
+      qlActivatedAt = res.ql_activated_at || null;
+      qlLicenseStatus = res.ql_license_status || null;
+      qlValidityMinutes = res.ql_validity_minutes != null ? res.ql_validity_minutes : null;
+      qlSessionId = res.ql_session_id || null;
       showMainUI(box);
       setPkCreditBypass(true);
 
-      if(!INTERNAL_LICENSE_MODE && res.ql_license_key) {
+      if(res.ql_license_key) {
         const _doStartupHb = (attempt) => {
-          var hbPromise;
-          if (typeof isDevLicenseKey === "function" && isDevLicenseKey(res.ql_license_key)) {
-            hbPromise = Promise.resolve(mockDevLicenseResponse(res.ql_license_key, {
-              session_id: res.ql_session_id,
-              device_id: qlDeviceId
-            }));
-          } else {
-            hbPromise = bgFetch(VALIDATE_URL, {
-              method: "POST",
-              headers: apiHeaders({ "Content-Type": "application/json" }),
-              body: JSON.stringify({ license_key: res.ql_license_key, session_id: res.ql_session_id, heartbeat: true, device_id: qlDeviceId, max_devices: 2, device_limit: 2, allowed_devices: 2 })
-            });
-          }
+          var hbPromise = bgFetch(VALIDATE_URL, {
+            method: "POST",
+            headers: apiHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ license_key: res.ql_license_key, session_id: res.ql_session_id, heartbeat: true, device_id: qlDeviceId, max_devices: 2, device_limit: 2, allowed_devices: 2 })
+          });
           hbPromise.then(function(data) {
             if(data.valid) {
               qlUserName = normalizeLicenseUserName(data.user_name || qlUserName);

@@ -584,18 +584,9 @@
 
   document.querySelector('.sp-logout-btn').addEventListener('click', () => {
     if(heartbeatInterval) clearInterval(heartbeatInterval);
-    if (!INTERNAL_LICENSE_MODE) syncCreditBypassOnLovableTabs(false);
+    syncCreditBypassOnLovableTabs(false);
     chrome.storage.local.remove(["ql_license_valid","ql_license_key","ql_session_id","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status"], async () => {
       userName = null; expiresAt = null; licenseStatus = null; sessionId = null;
-      if (INTERNAL_LICENSE_MODE) {
-        try {
-          await ensureInternalSessionLocal();
-          showMainUI();
-        } catch (e) {
-          showLicenseGate();
-        }
-        return;
-      }
       showLicenseGate();
     });
   });
@@ -1144,7 +1135,6 @@
 
   // --- Countdown ---
   function updateCountdown() {
-    if (INTERNAL_LICENSE_MODE) return;
     const el = document.getElementById('sp-countdown');
     // Always clear any previous ticking interval so a removed/changed expiry can't linger.
     if (spCountdownInterval) { clearInterval(spCountdownInterval); spCountdownInterval = null; }
@@ -1884,25 +1874,16 @@
     await new Promise(function(resolve) { getStoredPlatform(function() { resolve(); }); });
     chrome.storage.local.get(["ql_dark_mode"], r => { if(r.ql_dark_mode === false) document.body.classList.add('sp-light'); });
     chrome.storage.local.get(["ql_license_valid","ql_license_key","ql_user_name","ql_expires_at","ql_activated_at","ql_license_status","ql_validity_minutes","ql_session_id"], async (res) => {
-      if (INTERNAL_LICENSE_MODE || res.ql_license_valid) {
-        if (INTERNAL_LICENSE_MODE && !res.ql_license_valid) {
-          try {
-            await ensureInternalSessionLocal();
-          } catch (e) {
-            showLicenseGate();
-            return;
-          }
-        } else {
-          userName = normalizeLicenseUserName(res.ql_user_name);
-          expiresAt = res.ql_expires_at || null;
-          spActivatedAt = res.ql_activated_at || null;
-          licenseStatus = res.ql_license_status || null;
-          validityMinutes = res.ql_validity_minutes != null ? res.ql_validity_minutes : null;
-          sessionId = res.ql_session_id || null;
-        }
+      if (res.ql_license_valid) {
+        userName = normalizeLicenseUserName(res.ql_user_name);
+        expiresAt = res.ql_expires_at || null;
+        spActivatedAt = res.ql_activated_at || null;
+        licenseStatus = res.ql_license_status || null;
+        validityMinutes = res.ql_validity_minutes != null ? res.ql_validity_minutes : null;
+        sessionId = res.ql_session_id || null;
         syncCreditBypassOnLovableTabs(true);
         showMainUI();
-        if(res.ql_license_key && !(typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE)) {
+        if(res.ql_license_key) {
           const _doSpStartupHb = async (attempt) => {
             try {
               var data;

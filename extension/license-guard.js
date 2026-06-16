@@ -78,9 +78,6 @@
   }
 
   function pkLocalLicenseReady(stored) {
-    if (typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE) {
-      return true;
-    }
     if (!stored || !stored.ql_license_valid) return false;
     if (typeof resolveTeamLicenseKey !== "function") return false;
     if (!resolveTeamLicenseKey(stored.ql_license_key)) return false;
@@ -114,9 +111,6 @@
     if (!data || data.valid) {
       return { lock: false, conflictCount: 0 };
     }
-    if (typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE) {
-      return { lock: false, conflictCount: 0 };
-    }
     if (data.reason === "device_conflict") {
       conflictCount = (conflictCount || 0) + 1;
       if (conflictCount < 2) {
@@ -136,10 +130,6 @@
    * @param {boolean} force
    */
   function pkEnsureActiveLicense(force) {
-    if (typeof INTERNAL_LICENSE_MODE !== "undefined" && INTERNAL_LICENSE_MODE) {
-      return Promise.resolve({ allowed: true });
-    }
-
     var now = Date.now();
     if (!force && _assertCache.allowed && (now - _assertCache.at) < ASSERT_TTL_MS) {
       return Promise.resolve({ allowed: true, cached: true });

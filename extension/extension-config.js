@@ -39,59 +39,12 @@ var SEND_STRATEGY = "native";
 
 var POWERKITS_DEBUG = false;
 
-/**
- * Local dev/test keys — bypasses lov.powerkits.net for keys listed in DEV_TEST_LICENSE_KEYS.
- * Set to false before shipping; reload the extension after changing.
- */
-var DEV_LICENSE_MODE = false;
-
-/** Skip license gate — extension works without entering a key. */
-var INTERNAL_LICENSE_MODE = false;
-
-/** PK- keys that validate locally when DEV_LICENSE_MODE is true. */
-var DEV_TEST_LICENSE_KEYS = {
-  "PK-DEV-TEST-001": { user_name: "Trial Tester", status: "trial", validity_minutes: 60 },
-  "PK-DEV-TEST-002": { user_name: "Active Tester", status: "active", validity_minutes: 10080 },
-  "PK-DEV-TEST-003": { user_name: "Unlimited Tester", status: "active", validity_minutes: null },
-  "PK-DEV-TEST-004": { user_name: "Short Trial", status: "trial", validity_minutes: 30 },
-  "PK-DEV-TEST-005": { user_name: "Day Pass", status: "active", validity_minutes: 1440 }
-};
-
+// Local dev/test/internal bypass options removed for production security.
 function isDevLicenseKey(key) {
-  if (!DEV_LICENSE_MODE) return false;
-  var k = String(key || "").trim();
-  return !!k && Object.prototype.hasOwnProperty.call(DEV_TEST_LICENSE_KEYS, k);
+  return false;
 }
-
-function devLicenseProfile(key) {
-  return DEV_TEST_LICENSE_KEYS[String(key || "").trim()] || null;
-}
-
-/** Mock validate-license / heartbeat response for local test keys. */
 function mockDevLicenseResponse(key, opts) {
-  opts = opts || {};
-  var profile = devLicenseProfile(key);
-  if (!profile) return { valid: false, message: "Invalid license key.", reason: "invalid" };
-  var now = Date.now();
-  var minutes = profile.validity_minutes;
-  var expiresAt = minutes != null
-    ? new Date(now + minutes * 60 * 1000).toISOString()
-    : null;
-  var sessionId = opts.session_id
-    || ("dev-" + String(key).replace(/[^A-Za-z0-9]/g, "").toLowerCase() + "-" + String(opts.device_id || "local").slice(0, 8));
-  return {
-    valid: true,
-    allowed: true,
-    session_id: sessionId,
-    user_name: profile.user_name,
-    status: profile.status,
-    is_trial: profile.status === "trial",
-    message: "License activated (dev test key).",
-    expires_at: expiresAt,
-    activated_at: opts.activated_at || new Date(now).toISOString(),
-    validity_minutes: minutes,
-    online_count: 1
-  };
+  return { valid: false, message: "Invalid license key.", reason: "invalid" };
 }
 
 /** Side panel only — no floating bubble on lovable.dev. */

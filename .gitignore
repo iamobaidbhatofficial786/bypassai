@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# IDE / Editor config
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# local env
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel/
+
+# Next.js build output in subfolder (fallback ignore)
+license-server/.next/
+license-server/node_modules/
+license-server/db.json
+license-server/db.json.bak

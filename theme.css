@@ -1,0 +1,265 @@
+/**
+ * ByPass Ai — Hacker Theme
+ * Matrix-green on deep black, all elements clearly visible
+ */
+:root {
+  color-scheme: dark;
+
+  /* Backgrounds — deep black layers */
+  --ql-bg:              #010a01;
+  --ql-bg-elevated:     #030f03;
+  --ql-bg-surface:      #061206;
+  --ql-bg-hover:        #0a1e0a;
+
+  /* Borders */
+  --ql-border:          rgba(0, 255, 65, 0.15);
+  --ql-border-hover:    rgba(0, 255, 65, 0.45);
+
+  /* Text — all clearly readable */
+  --ql-text-primary:    #e0ffe0;
+  --ql-text-secondary:  #7dff7d;
+  --ql-text-muted:      #3a8a3a;
+
+  /* Accent — matrix green */
+  --ql-accent:          #00ff41;
+  --ql-accent-hover:    #39ff6e;
+  --ql-accent-glow:     rgba(0, 255, 65, 0.40);
+  --ql-accent-subtle:   rgba(0, 255, 65, 0.10);
+  --ql-link:            #39ff6e;
+
+  /* Gradients */
+  --ql-gradient-primary:  linear-gradient(135deg, #00ff41 0%, #00c832 50%, #008f1e 100%);
+  --ql-gradient-shimmer:  linear-gradient(90deg, #00ff41, #39ff6e, #00c832);
+
+  /* State colors — vivid and visible */
+  --ql-success:           #00ff41;
+  --ql-success-bg:        rgba(0, 255, 65, 0.12);
+  --ql-warning:           #ffee00;
+  --ql-warning-bg:        rgba(255, 238, 0, 0.12);
+  --ql-danger:            #ff2d2d;
+  --ql-danger-bg:         rgba(255, 45, 45, 0.12);
+
+  /* Shape & motion */
+  --ql-radius:            12px;
+  --ql-radius-sm:         8px;
+  --ql-radius-xs:         6px;
+  --ql-shadow:            0 24px 80px rgba(0, 255, 65, 0.12);
+  --ql-shadow-hover:      0 32px 100px rgba(0, 255, 65, 0.22);
+  --ql-transition:        0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Overlays */
+  --ql-glass:             rgba(1, 10, 1, 0.92);
+  --ql-overlay:           rgba(0, 0, 0, 0.75);
+  --ql-modal-bg:          #030f03;
+  --ql-modal-surface:     #010a01;
+  --ql-chat-bubble-end:   #00c832;
+}
+
+/* Light mode — keep as readable hacker-light (high contrast green on off-white) */
+body.sp-light,
+#ql-floating.ql-light {
+  color-scheme: light;
+
+  --ql-bg:              #f0fff0;
+  --ql-bg-elevated:     #ffffff;
+  --ql-bg-surface:      #e6ffe6;
+  --ql-bg-hover:        #ccffcc;
+  --ql-border:          rgba(0, 150, 30, 0.18);
+  --ql-border-hover:    rgba(0, 200, 50, 0.45);
+  --ql-text-primary:    #002800;
+  --ql-text-secondary:  #005200;
+  --ql-text-muted:      #3a8a3a;
+  --ql-accent:          #007a1e;
+  --ql-accent-hover:    #009926;
+  --ql-accent-glow:     rgba(0, 150, 30, 0.22);
+  --ql-accent-subtle:   rgba(0, 200, 50, 0.10);
+  --ql-link:            #007a1e;
+  --ql-gradient-primary: linear-gradient(135deg, #007a1e 0%, #009926 50%, #00c832 100%);
+  --ql-gradient-shimmer: linear-gradient(90deg, #007a1e, #009926, #00c832);
+  --ql-shadow:          0 16px 48px rgba(0, 120, 30, 0.10);
+  --ql-shadow-hover:    0 24px 64px rgba(0, 120, 30, 0.16);
+  --ql-glass:           rgba(255, 255, 255, 0.94);
+  --ql-overlay:         rgba(0, 40, 0, 0.45);
+  --ql-modal-bg:        #ffffff;
+  --ql-modal-surface:   #f0fff0;
+  --ql-chat-bubble-end: #007a1e;
+}
+
+/* ─── Ambient background with scanline + glow effect ─── */
+body:not(.sp-light) {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 65, 0.015) 2px,
+      rgba(0, 255, 65, 0.015) 4px
+    ),
+    radial-gradient(ellipse at 50% 0%, rgba(0, 255, 65, 0.08), transparent 60%),
+    var(--ql-bg);
+}
+
+body.sp-light { background: var(--ql-bg); }
+
+/* ─── Light-mode overrides for floating elements ─── */
+#ql-floating.ql-light .ql-icon-btn { color: var(--ql-text-secondary); }
+#ql-floating.ql-light .ql-icon-btn:hover { background: var(--ql-bg-hover); color: var(--ql-text-primary); }
+#ql-floating.ql-light textarea,
+#ql-floating.ql-light input[type="text"],
+#ql-floating.ql-light input[type="password"] {
+  background: var(--ql-bg-elevated) !important;
+  color: var(--ql-text-primary) !important;
+  border-color: var(--ql-border) !important;
+}
+#ql-floating.ql-light textarea::placeholder,
+#ql-floating.ql-light input::placeholder { color: var(--ql-text-muted) !important; }
+#ql-floating.ql-light .ql-brand { color: var(--ql-text-primary); }
+#ql-floating.ql-light .ql-pkg-card { box-shadow: var(--ql-shadow); }
+#ql-floating.ql-light .ql-trial-bar { background: var(--ql-bg-hover); }
+
+/* ─── Shared component tokens ─── */
+.pk-discord-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--ql-border-hover);
+  background: var(--ql-accent-subtle);
+  color: var(--ql-accent);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all var(--ql-transition);
+  text-shadow: 0 0 8px var(--ql-accent-glow);
+}
+.pk-discord-cta:hover {
+  border-color: var(--ql-accent);
+  color: var(--ql-accent-hover);
+  box-shadow: 0 0 12px var(--ql-accent-glow);
+}
+
+/* ─── Feature buttons ─── */
+.sp-btn-feature {
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 6px;
+  border-radius: var(--ql-radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--ql-transition);
+  font-family: inherit;
+  border: 1px solid transparent;
+}
+.sp-btn-feature:hover { transform: translateY(-1px); filter: brightness(1.15); box-shadow: 0 0 10px var(--ql-accent-glow); }
+.sp-btn-feature:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.sp-btn-native-chat {
+  background: linear-gradient(135deg, rgba(0,255,65,0.10), rgba(0,200,50,0.06));
+  border-color: rgba(0,255,65,0.28);
+  color: #39ff6e;
+}
+.sp-btn-native-chat.sp-native-active {
+  background: linear-gradient(135deg, rgba(0,255,65,0.18), rgba(0,200,50,0.12));
+  border-color: rgba(0,255,65,0.55);
+  color: #00ff41;
+}
+
+.sp-btn-download {
+  background: linear-gradient(135deg, rgba(0,210,255,0.12), rgba(0,150,200,0.07));
+  border-color: rgba(0,210,255,0.30);
+  color: #00d2ff;
+}
+
+.sp-btn-quick-init {
+  background: linear-gradient(135deg, rgba(255,238,0,0.12), rgba(220,180,0,0.07));
+  border-color: rgba(255,238,0,0.32);
+  color: #ffee00;
+}
+
+.sp-btn-publish {
+  background: linear-gradient(135deg, rgba(0,255,65,0.14), rgba(0,180,40,0.08));
+  border-color: rgba(0,255,65,0.32);
+  color: #00ff41;
+}
+
+.sp-btn-cloud {
+  background: linear-gradient(135deg, rgba(0,210,255,0.12), rgba(0,255,65,0.08));
+  border-color: rgba(0,210,255,0.28);
+  color: #00d2ff;
+}
+
+.sp-section-label {
+  margin-top: 14px;
+  display: block;
+  opacity: 0.75;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ql-text-muted);
+}
+
+/* ─── Publish modal ─── */
+.pk-publish-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--ql-overlay);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+}
+.pk-publish-overlay-top { z-index: 2147483647; }
+
+.pk-publish-modal {
+  background: var(--ql-modal-bg);
+  border: 1px solid var(--ql-border-hover);
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 340px;
+  width: 90%;
+  box-shadow: var(--ql-shadow), 0 0 30px rgba(0,255,65,0.12);
+}
+.pk-publish-modal h3 { margin: 0 0 6px; color: var(--ql-accent); font-size: 16px; font-weight: 700; text-align: center; text-shadow: 0 0 10px var(--ql-accent-glow); }
+.pk-publish-modal p { margin: 0 0 14px; color: var(--ql-text-secondary); font-size: 12px; text-align: center; }
+.pk-publish-url-box { background: var(--ql-modal-surface); border: 1px solid var(--ql-border); border-radius: 10px; padding: 8px; margin-bottom: 14px; word-break: break-all; }
+.pk-publish-url-box a { color: var(--ql-link); text-decoration: none; font-size: 12px; }
+.pk-publish-actions { display: flex; gap: 6px; }
+.pk-publish-actions button { flex: 1; padding: 8px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: inherit; }
+.pk-publish-copy { border: 1px solid var(--ql-border); background: transparent; color: var(--ql-text-primary); }
+.pk-publish-open { border: none; background: var(--ql-gradient-primary); color: #000; font-weight: 700; }
+.pk-publish-close { width: 100%; margin-top: 6px; padding: 6px; border: none; background: transparent; color: var(--ql-text-muted); cursor: pointer; font-size: 11px; font-family: inherit; }
+.pk-publish-modal-wide { max-width: 420px; padding: 24px; }
+.pk-publish-modal-wide h3 { font-size: 18px; margin-bottom: 8px; }
+.pk-publish-modal-wide p { font-size: 13px; margin-bottom: 16px; }
+.pk-publish-modal-wide .pk-publish-url-box { padding: 10px; margin-bottom: 16px; }
+.pk-publish-modal-wide .pk-publish-url-box a { font-size: 13px; }
+.pk-publish-modal-wide .pk-publish-actions button { padding: 10px; font-size: 13px; }
+.pk-publish-modal-wide .pk-publish-close { margin-top: 8px; padding: 8px; font-size: 12px; }
+.pk-publish-emoji { text-align: center; margin-bottom: 6px; }
+.pk-publish-modal-wide .pk-publish-emoji { font-size: 32px; margin-bottom: 8px; }
+
+/* ─── Update banner ─── */
+.pk-update-banner {
+  padding: 10px 12px;
+  background: linear-gradient(135deg, var(--ql-accent-subtle), rgba(0,210,255,0.06));
+  border: 1px solid var(--ql-border-hover);
+  border-radius: 10px;
+  margin: 8px 0;
+}
+.pk-update-banner-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.pk-update-banner-title { font-size: 11px; color: var(--ql-accent); text-shadow: 0 0 8px var(--ql-accent-glow); }
+.pk-update-banner-text { font-size: 10px; color: var(--ql-text-secondary); margin: 0 0 6px; white-space: pre-line; }
+.pk-update-banner-dl {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--ql-gradient-primary);
+  color: #000;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 700;
+}

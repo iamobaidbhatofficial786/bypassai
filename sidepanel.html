@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ByPass Ai</title>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="sp-header">
+    <div class="sp-brand">
+      <img class="sp-brand-logo" src="assets/logo-master-lovable-square.png" alt=""><span class="sp-brand-text">ByPass Ai</span>
+      <span class="sp-badge">PRO</span>
+    </div>
+    <div class="sp-header-actions">
+      <button class="sp-icon-btn sp-notif-btn" title="Notifications">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="sp-notif-badge" style="display:none">0</span>
+      </button>
+      <button class="sp-icon-btn sp-theme-btn" title="Theme">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="sp-icon-btn sp-logout-btn" title="Logout">🚪</button>
+    </div>
+  </div>
+  
+  <div class="sp-body" id="sp-body">
+    <div class="sp-license-gate" id="sp-loading" style="padding:40px 0;text-align:center">
+      <p style="color:var(--ql-text-muted)">⏳ Loading...</p>
+    </div>
+  </div>
+
+  <div class="sp-footer">
+    <button class="sp-back-to-popup" id="sp-back-to-popup" title="Return to floating mode" style="display:none">
+      ◀ Popup
+    </button>
+    <a href="https://t.me/Iamsamkhanofficial" target="_blank" rel="noopener noreferrer" class="sp-support-link" id="sp-support-discord">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+      Support
+    </a>
+     <span class="sp-footer-badge" id="sp-footer-version"></span>
+  </div>
+
+  <div class="sp-notif-panel" id="sp-notif-panel" style="display:none">
+    <div class="sp-notif-header">
+      <span>Notifications</span>
+      <button class="sp-notif-close" id="sp-notif-close">✕</button>
+    </div>
+    <div class="sp-notif-list" id="sp-notif-list">
+      <p class="sp-notif-empty">Loading...</p>
+    </div>
+  </div>
+
+  <script src="extension-config.js"></script>
+  <script src="platform-config.js"></script>
+  <script src="lovable-auth.js"></script>
+  <script src="lovable-feature-api.js"></script>
+  <script src="user-messages.js"></script>
+  <script src="jszip.min.js"></script>
+  <script src="hwFingerprint.js"></script>
+  <script src="license-guard.js"></script>
+  <script src="sidepanel-templates.js"></script>
+  <script src="sounds.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+Lovable Powerkits — Dev Test License Keys
+=========================================
+
+DEV_LICENSE_MODE is ON in extension-config.js. Paste any key below into the
+side panel license gate to test activation without the live server.
+
+Keys
+----
+PK-DEV-TEST-001   Trial, 60 minutes   (user: Trial Tester)
+PK-DEV-TEST-002   Active, 7 days      (user: Active Tester)
+PK-DEV-TEST-003   Active, no expiry   (user: Unlimited Tester)
+PK-DEV-TEST-004   Trial, 30 minutes   (user: Short Trial)
+PK-DEV-TEST-005   Active, 24 hours    (user: Day Pass)
+
+How to test
+-----------
+1. Open chrome://extensions and reload "Lovable Powerkits".
+2. Open the extension side panel on lovable.dev.
+3. Paste one of the keys above and click Activate.
+4. Confirm the main UI loads and features unlock.
+
+Notes
+-----
+- These keys only work while DEV_LICENSE_MODE = true.
+- Set DEV_LICENSE_MODE = false (and reload) before distributing the extension.
+- Production PK- keys must be issued via Discord support / your reseller.

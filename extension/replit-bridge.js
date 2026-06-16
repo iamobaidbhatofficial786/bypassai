@@ -209,6 +209,64 @@
     }
   }
 
+  function setContenteditableText(editor, text) {
+    editor.focus();
+    
+    // Clear existing content safely by dispatching delete selection
+    try {
+      document.execCommand("selectAll", false, null);
+      document.execCommand("delete", false, null);
+    } catch(e) {}
+    
+    // Dispatch beforeinput event (crucial for CodeMirror 6)
+    try {
+      var beforeInputEvent = new InputEvent("beforeinput", {
+        bubbles: true,
+        cancelable: true,
+        inputType: "insertText",
+        data: text
+      });
+      editor.dispatchEvent(beforeInputEvent);
+      console.log("[Replit Bridge] Dispatched beforeinput event.");
+    } catch(e) {
+      console.warn("[Replit Bridge] beforeinput event failed:", e);
+    }
+    
+    // Fallback: execCommand insertText
+    try {
+      document.execCommand("insertText", false, text);
+      console.log("[Replit Bridge] Text set via execCommand. Content:", editor.textContent);
+    } catch (e) {
+      console.warn("[Replit Bridge] execCommand insertText fallback failed:", e);
+    }
+    
+    // Dispatch input event
+    try {
+      var inputEvent = new InputEvent("input", {
+        bubbles: true,
+        cancelable: true,
+        inputType: "insertText",
+        data: text
+      });
+      editor.dispatchEvent(inputEvent);
+      console.log("[Replit Bridge] Dispatched input event.");
+    } catch(e) {}
+    
+    // Direct DOM text assignment if all else failed (last resort)
+    var currentText = editor.textContent || "";
+    if (currentText.trim() !== text.trim()) {
+      try {
+        editor.innerHTML = "";
+        editor.textContent = text;
+        console.log("[Replit Bridge] Content set via textContent fallback.");
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
+        editor.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch (e) {
+        console.warn("[Replit Bridge] textContent update failed:", e);
+      }
+    }
+  }
+
   function setReplitComposerText(editor, text) {
     console.log("[Replit Bridge] setReplitComposerText targeting element:", editor, "with text length:", text.length);
     editor.focus();
@@ -224,30 +282,7 @@
       return;
     }
     
-    // For contenteditable / CodeMirror editors
-    try {
-      // Method A: Select All + insertText execCommand
-      document.execCommand("selectAll", false, null);
-      document.execCommand("insertText", false, text);
-      console.log("[Replit Bridge] Text set via insertText command. Current content:", editor.textContent);
-    } catch (e) {
-      console.warn("[Replit Bridge] execCommand insertText failed:", e);
-    }
-    
-    // Verify if text was typed, else do direct fallback
-    var currentText = editor.textContent || "";
-    if (currentText.trim() !== text.trim()) {
-      try {
-        editor.innerHTML = "";
-        editor.textContent = text;
-        console.log("[Replit Bridge] Content set via textContent fallback.");
-      } catch (e) {
-        console.warn("[Replit Bridge] textContent update failed:", e);
-      }
-    }
-    
-    editor.dispatchEvent(new Event("input", { bubbles: true }));
-    editor.dispatchEvent(new Event("change", { bubbles: true }));
+    setContenteditableText(editor, text);
   }
 
   async function sendNativeToReplit(text) {

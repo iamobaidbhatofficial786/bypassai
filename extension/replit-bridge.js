@@ -10,8 +10,10 @@
   }
 
   function findReplitInput() {
-    // 1. Check all textareas, inputs and contenteditable divs
+    console.log("[Replit Bridge] Scanning for Replit chat/agent input elements...");
     var candidates = document.querySelectorAll("textarea, input, div[contenteditable='true']");
+    console.log("[Replit Bridge] Found " + candidates.length + " candidate elements on page.");
+    
     for (var i = 0; i < candidates.length; i++) {
       var el = candidates[i];
       
@@ -27,11 +29,14 @@
           }
         }
       } catch (e) {}
-      placeholder = String(placeholder).toLowerCase();
+      placeholder = String(placeholder || "").toLowerCase();
 
       var label = String(el.getAttribute("aria-label") || "").toLowerCase();
       var title = String(el.getAttribute("title") || "").toLowerCase();
+      var className = String(el.className || "").toLowerCase();
       
+      console.log("[Replit Bridge] Candidate [" + i + "]: tag=" + el.tagName + ", classes='" + className + "', placeholder='" + placeholder + "', label='" + label + "', title='" + title + "'");
+
       // Check if it has agent keywords (highest override priority)
       var hasAgentKeywords = placeholder.includes("make") || placeholder.includes("test") || placeholder.includes("iterate") || 
           placeholder.includes("ask") || placeholder.includes("agent") || placeholder.includes("message") ||
@@ -39,11 +44,11 @@
           title.includes("make") || title.includes("ask");
 
       if (hasAgentKeywords) {
+        console.log("[Replit Bridge] SUCCESS: Matched Replit input with keywords:", el);
         return el;
       }
 
       // Filter out code editors if no agent keywords match
-      var className = String(el.className || "").toLowerCase();
       if (className.includes("monaco") || className.includes("cm-") || className.includes("editor") || className.includes("inputarea")) {
         continue;
       }
@@ -68,7 +73,10 @@
     ];
     for (var i = 0; i < selectors.length; i++) {
       var el = document.querySelector(selectors[i]);
-      if (el) return el;
+      if (el) {
+        console.log("[Replit Bridge] SUCCESS: Matched selector:", selectors[i], el);
+        return el;
+      }
     }
 
     // 3. Fallback: find a textarea or input that is likely the chat input (not the code editor)
@@ -79,21 +87,25 @@
       if (!className.includes("monaco") && !className.includes("cm-") && !className.includes("editor") && !className.includes("inputarea")) {
         var rect = ta.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
+          console.log("[Replit Bridge] SUCCESS: Selected fallback textarea/input:", ta);
           return ta;
         }
       }
     }
 
+    console.warn("[Replit Bridge] WARNING: No matching Replit input element found on page.");
     return null;
   }
 
   function findReplitSendButton() {
     var input = findReplitInput();
     if (input) {
+      console.log("[Replit Bridge] Scanning for send button relative to input element...");
       // 1. Look for a button inside the same parent container
       var container = input.closest("div");
-      for (var depth = 0; depth < 4 && container; depth++) {
+      for (var depth = 0; depth < 5 && container; depth++) {
         var buttons = container.querySelectorAll("button");
+        console.log("[Replit Bridge] Depth " + depth + ": found " + buttons.length + " buttons inside container:", container);
         var bestBtn = null;
         for (var i = 0; i < buttons.length; i++) {
           var btn = buttons[i];
@@ -104,10 +116,13 @@
           var title = (btn.getAttribute("title") || "").toLowerCase();
           var text = (btn.textContent || "").toLowerCase();
           
+          console.log("[Replit Bridge] Button candidate [" + i + "]: text='" + text + "', label='" + aria + "', title='" + title + "'");
+
           // Specific send/submit matching (highest priority)
           if (aria.includes("send") || title.includes("send") || text.includes("send") || 
               aria.includes("submit") || title.includes("submit") || 
               html.includes("arrowup") || html.includes("arrow-up") || html.includes("send-icon")) {
+            console.log("[Replit Bridge] SUCCESS: Matched send button keywords:", btn);
             return btn;
           }
           
@@ -124,12 +139,16 @@
             }
           }
         }
-        if (bestBtn) return bestBtn;
+        if (bestBtn) {
+          console.log("[Replit Bridge] SUCCESS: Selected fallback SVG button:", bestBtn);
+          return bestBtn;
+        }
         container = container.parentElement;
       }
     }
 
     // 2. Global selectors fallback (excluding common controls)
+    console.log("[Replit Bridge] Sending button not found in input container. Scanning globally...");
     var selectors = [
       "button[aria-label*='Send']",
       "button[aria-label*='send']",
@@ -142,14 +161,18 @@
     for (var i = 0; i < selectors.length; i++) {
       var el = document.querySelector(selectors[i]);
       if (el && !el.disabled) {
+        console.log("[Replit Bridge] SUCCESS: Matched global selector send button:", selectors[i], el);
         return el;
       }
     }
+    
+    console.warn("[Replit Bridge] WARNING: No send button matched. Fallback to Enter key will be used.");
     return null;
   }
 
   function triggerClick(element) {
     if (!element) return;
+    console.log("[Replit Bridge] Simulating clicks on button:", element);
     try {
       element.focus();
       element.click();
@@ -166,6 +189,7 @@
 
   function triggerEnterKey(element) {
     if (!element) return;
+    console.log("[Replit Bridge] Simulating Enter key presses on input element:", element);
     try {
       element.focus();
     } catch(e) {}
@@ -186,6 +210,7 @@
   }
 
   function setReplitComposerText(editor, text) {
+    console.log("[Replit Bridge] setReplitComposerText targeting element:", editor, "with text length:", text.length);
     editor.focus();
     var tag = (editor.tagName || "").toLowerCase();
     if (tag === "textarea" || tag === "input") {
@@ -195,19 +220,38 @@
       else editor.value = text;
       editor.dispatchEvent(new Event("input", { bubbles: true }));
       editor.dispatchEvent(new Event("change", { bubbles: true }));
+      console.log("[Replit Bridge] Text set successfully on form input field.");
       return;
     }
+    
+    // For contenteditable / CodeMirror editors
     try {
-      editor.textContent = "";
+      // Method A: Select All + insertText execCommand
       document.execCommand("selectAll", false, null);
       document.execCommand("insertText", false, text);
+      console.log("[Replit Bridge] Text set via insertText command. Current content:", editor.textContent);
     } catch (e) {
-      editor.textContent = text;
+      console.warn("[Replit Bridge] execCommand insertText failed:", e);
     }
+    
+    // Verify if text was typed, else do direct fallback
+    var currentText = editor.textContent || "";
+    if (currentText.trim() !== text.trim()) {
+      try {
+        editor.innerHTML = "";
+        editor.textContent = text;
+        console.log("[Replit Bridge] Content set via textContent fallback.");
+      } catch (e) {
+        console.warn("[Replit Bridge] textContent update failed:", e);
+      }
+    }
+    
     editor.dispatchEvent(new Event("input", { bubbles: true }));
+    editor.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   async function sendNativeToReplit(text) {
+    console.log("[Replit Bridge] sendNativeToReplit started.");
     var editor = findReplitInput();
     if (!editor) {
       throw new Error("Replit chat input not found. Open your Repl on replit.com and wait for the workspace to load.");

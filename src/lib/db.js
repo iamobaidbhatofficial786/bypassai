@@ -1,13 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 
-// Resolve local DB path relative to project root
-const LOCAL_DB_PATH = path.join(process.cwd(), 'db.json');
+// On Vercel serverless, the root filesystem is read-only. We must write local files to /tmp.
+const isVercel = !!(process.env.VERCEL || process.env.NOW_BUILDER || process.env.LAMBDA_TASK_ROOT);
+const LOCAL_DB_PATH = isVercel 
+  ? path.join('/tmp', 'db.json') 
+  : path.join(process.cwd(), 'db.json');
 
 // Helper to initialize local db file if it doesn't exist
 function initLocalDb() {
   if (!fs.existsSync(LOCAL_DB_PATH)) {
-    fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ keys: {}, sessions: {} }, null, 2), 'utf-8');
+    try {
+      fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ keys: {}, sessions: {} }, null, 2), 'utf-8');
+    } catch (e) {
+      console.error("Failed to initialize local DB:", e);
+    }
   }
 }
 

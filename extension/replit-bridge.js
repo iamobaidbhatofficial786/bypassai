@@ -13,18 +13,18 @@
     if (!el) return false;
     var tag = String(el.tagName || "").toLowerCase();
     if (tag === "textarea") return true;
-    if (tag === "div" && el.getAttribute("contenteditable") === "true") return true;
+    if (el.isContentEditable) return true;
     if (tag === "input") {
       var type = String(el.getAttribute("type") || "text").toLowerCase();
       var badTypes = ["radio", "checkbox", "button", "submit", "hidden", "file", "image", "range", "color"];
       return !badTypes.includes(type);
     }
-    return el.getAttribute("contenteditable") === "true";
+    return false;
   }
 
   function findReplitInput() {
     console.log("[Replit Bridge] Scanning for Replit chat/agent input elements...");
-    var candidates = document.querySelectorAll("textarea, input, div[contenteditable='true']");
+    var candidates = document.querySelectorAll("textarea, input, [contenteditable]");
     console.log("[Replit Bridge] Found " + candidates.length + " candidate elements on page.");
     
     for (var i = 0; i < candidates.length; i++) {

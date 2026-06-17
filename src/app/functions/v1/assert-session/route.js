@@ -69,8 +69,8 @@ export async function POST(req) {
       );
     }
 
-    // Verify expiration
-    if (keyObj.expires_at && new Date(keyObj.expires_at) < new Date()) {
+    // Verify expiration (only if the key is activated, or has a fixed expiry date without validity_minutes)
+    if (keyObj.expires_at && (!keyObj.validity_minutes || keyObj.activated_at) && new Date(keyObj.expires_at) < new Date()) {
       return NextResponse.json(
         { allowed: false, reason: 'expired', message: 'License has expired.' },
         { headers: corsHeaders() }

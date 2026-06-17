@@ -286,9 +286,23 @@ export default function Dashboard() {
     return d.toLocaleString();
   };
 
-  const isExpired = (expiryStr) => {
-    if (!expiryStr) return false;
-    return new Date(expiryStr) < new Date();
+  const formatValidity = (mins) => {
+    if (!mins) return 'Unlimited';
+    if (mins % (24 * 60) === 0) {
+      const days = mins / (24 * 60);
+      return `${days} ${days === 1 ? 'day' : 'days'} (Pending)`;
+    }
+    if (mins % 60 === 0) {
+      const hours = mins / 60;
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'} (Pending)`;
+    }
+    return `${mins} mins (Pending)`;
+  };
+
+  const isExpired = (k) => {
+    if (k.validity_minutes && !k.activated_at) return false;
+    if (!k.expires_at) return false;
+    return new Date(k.expires_at) < new Date();
   };
 
   if (!isLoggedIn) {
@@ -461,7 +475,7 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {filteredKeys.map((k) => {
-                    const expired = isExpired(k.expires_at);
+                    const expired = isExpired(k);
                     return (
                       <tr key={k.key}>
                         <td className="mono" style={{ fontWeight: 'bold' }}>{k.key}</td>
@@ -477,7 +491,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td style={{ fontSize: '0.8rem', color: expired ? 'var(--danger)' : 'var(--text-color)' }}>
-                          {k.expires_at ? formatTime(k.expires_at) : 'Unlimited'}
+                          {k.expires_at ? formatTime(k.expires_at) : formatValidity(k.validity_minutes)}
                         </td>
                         <td>
                           <div className="devices-list">

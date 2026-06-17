@@ -55,9 +55,9 @@ export async function POST(req) {
       );
     }
 
-    // Check expiration
+    // Check expiration (only if the key is activated, or has a fixed expiry date without validity_minutes)
     const now = new Date();
-    if (keyObj.expires_at && new Date(keyObj.expires_at) < now) {
+    if (keyObj.expires_at && (!keyObj.validity_minutes || keyObj.activated_at) && new Date(keyObj.expires_at) < now) {
       return NextResponse.json(
         { valid: false, message: 'License has expired. Contact support to renew.' },
         { headers: corsHeaders() }
@@ -68,6 +68,8 @@ export async function POST(req) {
     if (!keyObj.devices) {
       keyObj.devices = [];
     }
+
+    let keyUpdated = false;
 
     // Manage device association
     if (device_id) {
@@ -85,11 +87,21 @@ export async function POST(req) {
           );
         }
         keyObj.devices.push(cleanDeviceId);
-        if (!keyObj.activated_at) {
-          keyObj.activated_at = now.toISOString();
-        }
-        await saveKey(keyObj);
+        keyUpdated = true;
       }
+    }
+
+    // Perform first-time activation setup
+    if (!keyObj.activated_at) {
+      keyObj.activated_at = now.toISOString();
+      if (keyObj.validity_minutes) {
+        keyObj.expires_at = new Date(now.getTime() + keyObj.validity_minutes * 60 * 1000).toISOString();
+      }
+      keyUpdated = true;
+    }
+
+    if (keyUpdated) {
+      await saveKey(keyObj);
     }
 
     // Generate active session ID

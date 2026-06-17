@@ -55,10 +55,8 @@ export async function POST(req) {
       return NextResponse.json({ error: 'License key already exists' }, { status: 400 });
     }
 
-    // Calculate expiry based on validity_minutes if provided
-    if (validity_minutes && !expires_at) {
-      expires_at = new Date(Date.now() + parseInt(validity_minutes) * 60 * 1000).toISOString();
-    }
+    // Defer expiry calculation based on validity_minutes until the key is actually activated.
+    // If validity_minutes is provided, expires_at starts as null (pending activation).
 
     const keyObj = {
       key,

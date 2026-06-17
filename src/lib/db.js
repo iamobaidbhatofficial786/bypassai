@@ -205,8 +205,8 @@ export async function cleanExpiredSessions() {
   const now = Date.now();
   let changed = false;
   
-  // Define session timeout: if no heartbeat in 2 minutes, remove session
-  const SESSION_TIMEOUT_MS = 2 * 60 * 1000;
+  // Define session timeout: if no heartbeat in 30 days, remove session
+  const SESSION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000;
 
   for (const sid in sessions) {
     const lastSeenTime = new Date(sessions[sid].last_seen).getTime();

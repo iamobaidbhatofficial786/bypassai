@@ -45,7 +45,7 @@
   function findReplitInput() {
     console.log("[Replit Bridge] Scanning for Replit chat/agent input elements...");
     
-    var textKeywords = ["make, test, iterate", "make, test", "iterate...", "ask a question", "ask agent"];
+    var textKeywords = ["make, test, iterate", "make, test", "iterate...", "ask a question", "ask agent", "describe your idea", "describe what you want", "what do you want to build", "what do you want to create"];
     
     // 1. Scan candidates (textarea, input, contenteditable)
     var candidates = document.querySelectorAll("textarea, input, [contenteditable]");
@@ -89,9 +89,9 @@
       var className = String(el.className || "").toLowerCase();
       
       var hasAgentKeywords = placeholder.includes("make") || placeholder.includes("test") || placeholder.includes("iterate") || 
-          placeholder.includes("ask") || placeholder.includes("agent") || placeholder.includes("message") ||
-          label.includes("make") || label.includes("ask") || label.includes("prompt") ||
-          title.includes("make") || title.includes("ask");
+          placeholder.includes("ask") || placeholder.includes("agent") || placeholder.includes("message") || placeholder.includes("describe") || placeholder.includes("build") || placeholder.includes("create") ||
+          label.includes("make") || label.includes("ask") || label.includes("prompt") || label.includes("describe") || label.includes("build") || label.includes("create") ||
+          title.includes("make") || title.includes("ask") || title.includes("describe") || title.includes("build") || title.includes("create");
 
       if (hasAgentKeywords) {
         console.log("[Replit Bridge] SUCCESS: Matched Replit input with keywords:", el);

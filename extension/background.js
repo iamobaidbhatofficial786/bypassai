@@ -363,13 +363,13 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 async function checkPromptBeforeDelivery(message) {
   // 1. Get stored license information
-  const storageData = await new Promise(r => chrome.storage.local.get(["ql_session_id", "ql_device_id", "ql_license_api_base"], r));
+  const storageData = await new Promise(r => chrome.storage.local.get(["ql_session_id", "ql_device_id", "ql_hw_fingerprint", "ql_license_api_base"], r));
   const sessionToken = storageData.ql_session_id || "";
-  let deviceId = storageData.ql_device_id || "";
+  let deviceId = storageData.ql_hw_fingerprint || storageData.ql_device_id || "";
   
   if (!deviceId) {
     deviceId = "dev_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
-    await chrome.storage.local.set({ ql_device_id: deviceId });
+    await chrome.storage.local.set({ ql_hw_fingerprint: deviceId });
   }
 
   // 2. Call Vercel /api/prompt/check

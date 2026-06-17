@@ -239,12 +239,11 @@ try {
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
     chrome.storage.onChanged.addListener(function(changes, area) {
       if (area !== "local") return;
-      if (changes.ql_license_valid || changes.ql_license_key || changes.ql_session_id) {
+      if (changes.ql_license_valid || changes.ql_license_key) {
         var isRemoved = changes.ql_license_valid && (changes.ql_license_valid.newValue !== true);
         var isKeyChanged = changes.ql_license_key && (changes.ql_license_key.newValue !== changes.ql_license_key.oldValue);
-        var isSessionChanged = changes.ql_session_id && (changes.ql_session_id.newValue !== changes.ql_session_id.oldValue);
         
-        if (isRemoved || isKeyChanged || isSessionChanged) {
+        if (isRemoved || isKeyChanged) {
           chrome.storage.local.get(["ql_authorized_write"], function(res) {
             if (!res || !res.ql_authorized_write) {
               console.warn("[TamperProtection] Unauthorized license state modification detected.");

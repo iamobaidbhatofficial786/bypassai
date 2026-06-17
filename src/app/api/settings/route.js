@@ -47,10 +47,14 @@ export async function POST(req) {
   }
   try {
     const body = await req.json().catch(() => ({}));
-    const { system_locked } = body;
-    
     const settings = await getSystemSettings();
-    settings.system_locked = !!system_locked;
+    
+    if (body.hasOwnProperty('system_locked')) {
+      settings.system_locked = !!body.system_locked;
+    }
+    if (body.hasOwnProperty('disable_hints')) {
+      settings.disable_hints = !!body.disable_hints;
+    }
     
     await saveSystemSettings(settings);
     return NextResponse.json(settings, { headers: corsHeaders() });

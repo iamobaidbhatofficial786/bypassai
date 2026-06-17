@@ -22,56 +22,68 @@
     return false;
   }
 
+  function isInsideModal(el) {
+    var parent = el.parentElement;
+    while (parent) {
+      var role = String(parent.getAttribute("role") || "").toLowerCase();
+      var className = String(parent.className || "").toLowerCase();
+      var id = String(parent.id || "").toLowerCase();
+      var dataTestId = String(parent.getAttribute("data-testid") || "").toLowerCase();
+      
+      if (role === "dialog" || role === "alertdialog" || role === "modal" ||
+          className.includes("modal") || className.includes("dialog") || 
+          className.includes("popup") || className.includes("overlay") ||
+          id.includes("modal") || id.includes("dialog") ||
+          dataTestId.includes("modal") || dataTestId.includes("dialog")) {
+        return true;
+      }
+      parent = parent.parentElement;
+    }
+    return false;
+  }
+
   function findReplitInput() {
     console.log("[Replit Bridge] Scanning for Replit chat/agent input elements...");
     
-    // 1. Visual text-based search (highest priority)
     var textKeywords = ["make, test, iterate", "make, test", "iterate...", "ask a question", "ask agent"];
-    var allTags = document.querySelectorAll("div, span, p, label, cm-placeholder, .cm-placeholder");
-    for (var i = 0; i < allTags.length; i++) {
-      var el = allTags[i];
-      if (el.isContentEditable) continue;
-      
-      var text = (el.textContent || "").trim().toLowerCase();
-      for (var k = 0; k < textKeywords.length; k++) {
-        if (text.includes(textKeywords[k])) {
-          console.log("[Replit Bridge] Found placeholder text '" + textKeywords[k] + "' in element:", el);
-          var parent = el.parentElement;
-          for (var depth = 0; depth < 5 && parent; depth++) {
-            var editable = parent.querySelector("textarea, input, [contenteditable]");
-            if (editable && isValidTextInput(editable)) {
-              console.log("[Replit Bridge] SUCCESS: Found input relative to visual placeholder text:", editable);
-              return editable;
-            }
-            parent = parent.parentElement;
-          }
-        }
-      }
-    }
-
-    // 2. Direct attribute/property scan (fallback)
+    
+    // 1. Scan candidates (textarea, input, contenteditable)
     var candidates = document.querySelectorAll("textarea, input, [contenteditable]");
     for (var i = 0; i < candidates.length; i++) {
       var el = candidates[i];
       if (!isValidTextInput(el)) continue;
+      if (isInsideModal(el)) continue; // Bypass inputs inside modals/overlays (e.g. Publish modals)
       
       var placeholder = "";
       try {
         placeholder = el.getAttribute("placeholder") || el.getAttribute("data-placeholder") || el.getAttribute("aria-placeholder") || "";
+        
+        // If placeholder is not directly on the element, search the parent container
         if (!placeholder) {
           var parent = el.parentElement;
-          for (var depth = 0; depth < 3 && parent; depth++) {
+          for (var depth = 0; depth < 5 && parent; depth++) {
+            // Check for CodeMirror placeholder class
             var phEl = parent.querySelector(".cm-placeholder, [class*='placeholder']");
             if (phEl) {
               placeholder = phEl.textContent || "";
               break;
             }
+            
+            // Check if any visual text in the container matches our keywords
+            var containerText = (parent.textContent || "").trim().toLowerCase();
+            for (var k = 0; k < textKeywords.length; k++) {
+              if (containerText.includes(textKeywords[k])) {
+                placeholder = textKeywords[k];
+                break;
+              }
+            }
+            if (placeholder) break;
             parent = parent.parentElement;
           }
         }
       } catch (e) {}
+      
       placeholder = String(placeholder || "").toLowerCase();
-
       var label = String(el.getAttribute("aria-label") || "").toLowerCase();
       var title = String(el.getAttribute("title") || "").toLowerCase();
       var className = String(el.className || "").toLowerCase();
@@ -85,18 +97,14 @@
         console.log("[Replit Bridge] SUCCESS: Matched Replit input with keywords:", el);
         return el;
       }
-
-      // Filter out code editors if no agent keywords match
-      if (className.includes("monaco") || className.includes("cm-") || className.includes("editor") || className.includes("inputarea")) {
-        continue;
-      }
     }
 
-    // 3. Fallback: find a textarea or input that is likely the chat input
+    // 2. Fallback: find a textarea or input that is likely the chat input
     var textareas = document.querySelectorAll("textarea, input");
     for (var i = 0; i < textareas.length; i++) {
       var ta = textareas[i];
       if (!isValidTextInput(ta)) continue;
+      if (isInsideModal(ta)) continue; // Bypass modal textareas
       var className = String(ta.className || "").toLowerCase();
       if (!className.includes("monaco") && !className.includes("cm-") && !className.includes("editor") && !className.includes("inputarea")) {
         var rect = ta.getBoundingClientRect();
@@ -107,11 +115,12 @@
       }
     }
 
-    // 4. Fallback 4: find any contenteditable element that is likely the chat panel input (small height)
+    // 3. Fallback: find any contenteditable element that is likely the chat panel input (small height)
     var editables = document.querySelectorAll("[contenteditable]");
     for (var i = 0; i < editables.length; i++) {
       var ed = editables[i];
       if (!isValidTextInput(ed)) continue;
+      if (isInsideModal(ed)) continue; // Bypass modal editables
       var className = String(ed.className || "").toLowerCase();
       if (!className.includes("monaco") && !className.includes("editor") && !className.includes("inputarea")) {
         var rect = ed.getBoundingClientRect();

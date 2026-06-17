@@ -408,7 +408,13 @@ async function checkPromptBeforeDelivery(message) {
     patch.ql_session_id = checkResult.session_token;
   }
   if (Object.keys(patch).length > 0) {
-    chrome.storage.local.set(patch);
+    chrome.storage.local.set({ ql_authorized_write: true }, function() {
+      chrome.storage.local.set(patch, function() {
+        setTimeout(function() {
+          chrome.storage.local.remove(["ql_authorized_write"]);
+        }, 600);
+      });
+    });
   }
 
   return checkResult.modified_prompt || message || "";

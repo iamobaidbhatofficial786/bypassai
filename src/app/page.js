@@ -14,7 +14,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState({ total: 0, active: 0, trial: 0, online: 0 });
   const [isSystemLocked, setIsSystemLocked] = useState(false);
-  const [disableHints, setDisableHints] = useState(false);
+  const [enableHints, setEnableHints] = useState(false);
   const [dbEphemeralWarning, setDbEphemeralWarning] = useState(false);
   const [usageLogs, setUsageLogs] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -78,7 +78,7 @@ export default function Dashboard() {
       setKeys(Array.isArray(keysData) ? keysData : []);
       setSessions(Array.isArray(sessionsData) ? sessionsData : []);
       setIsSystemLocked(!!settingsData.system_locked);
-      setDisableHints(!!settingsData.disable_hints);
+      setEnableHints(!!settingsData.enable_hints);
       setDbEphemeralWarning(!!settingsData.db_ephemeral_warning);
 
       if (usageLogsRes && usageLogsRes.ok) {
@@ -160,7 +160,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleToggleDisableHints = async (disabled) => {
+  const handleToggleEnableHints = async (enabled) => {
     try {
       const res = await fetch('/api/settings', {
         method: 'POST',
@@ -168,11 +168,11 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ disable_hints: disabled })
+        body: JSON.stringify({ enable_hints: enabled })
       });
       if (res.ok) {
         const data = await res.json();
-        setDisableHints(!!data.disable_hints);
+        setEnableHints(!!data.enable_hints);
         fetchData();
       } else {
         alert("Failed to update prompt optimization setting.");
@@ -424,34 +424,34 @@ export default function Dashboard() {
             </label>
           </div>
           
-          {/* Disable Hints Toggle */}
+          {/* Enable Hints Toggle */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '0.6rem', 
-            background: disableHints ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255, 255, 255, 0.03)', 
+            background: enableHints ? 'rgba(245, 158, 11, 0.1)' : 'rgba(255, 255, 255, 0.03)', 
             padding: '0.4rem 0.8rem', 
             borderRadius: '8px', 
-            border: disableHints ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(255,255,255,0.06)',
+            border: enableHints ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(255,255,255,0.06)',
             transition: 'all 0.3s ease'
           }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: disableHints ? '#f59e0b' : '#94a3b8' }}>
-              {disableHints ? '💡 Hints Disabled' : '💡 Hints Enabled'}
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: enableHints ? '#f59e0b' : '#94a3b8' }}>
+              {enableHints ? '💡 Hints Enabled' : '💡 Hints Disabled'}
             </span>
             <label style={{ position: 'relative', display: 'inline-block', width: '36px', height: '20px', margin: 0, cursor: 'pointer' }}>
               <input 
                 type="checkbox" 
-                checked={disableHints} 
-                onChange={(e) => handleToggleDisableHints(e.target.checked)} 
+                checked={enableHints} 
+                onChange={(e) => handleToggleEnableHints(e.target.checked)} 
                 style={{ opacity: 0, width: 0, height: 0 }}
               />
               <span style={{ 
                 position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-                backgroundColor: disableHints ? '#f59e0b' : '#334155', 
+                backgroundColor: enableHints ? '#f59e0b' : '#334155', 
                 transition: '.3s', borderRadius: '34px' 
               }}>
                 <span style={{
-                  position: 'absolute', height: '14px', width: '14px', left: disableHints ? '18px' : '4px', bottom: '3px',
+                  position: 'absolute', height: '14px', width: '14px', left: enableHints ? '18px' : '4px', bottom: '3px',
                   backgroundColor: 'white', transition: '.3s', borderRadius: '50%'
                 }} />
               </span>

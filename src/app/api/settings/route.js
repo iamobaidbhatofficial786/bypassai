@@ -52,8 +52,8 @@ export async function POST(req) {
     if (body.hasOwnProperty('system_locked')) {
       settings.system_locked = !!body.system_locked;
     }
-    if (body.hasOwnProperty('disable_hints')) {
-      settings.disable_hints = !!body.disable_hints;
+    if (body.hasOwnProperty('enable_hints')) {
+      settings.enable_hints = !!body.enable_hints;
     }
     
     await saveSystemSettings(settings);

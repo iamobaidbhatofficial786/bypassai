@@ -182,8 +182,8 @@ export async function POST(req) {
       }
     }
 
-    // Enhance prompt: append target instructions if allowed and not already present, and hints are not disabled
-    if (allowed && (!settings || !settings.disable_hints)) {
+    // Enhance prompt: append target instructions if allowed and not already present, and hints are enabled in settings
+    if (allowed && settings && settings.enable_hints === true) {
       // Enhance prompt with standard optimization instructions if the user requests it or by default for Pro/Enterprise
       if (plan === 'pro') {
         const hint = '[ByPass AI System Hint: Optimize the generated code for production stability and modern styling.]';

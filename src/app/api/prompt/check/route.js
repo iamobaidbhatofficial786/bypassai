@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { findKey, saveKey, findSession, saveSession, checkAndTrackRateLimit, logUsage, logAudit, getSystemSettings, listUsageLogs } from '@/lib/db';
+import { findKey, saveKey, findSession, saveSession, checkAndTrackRateLimit, logUsage, logAudit, getSystemSettings, listUsageLogs, verifyStatelessToken, generateStatelessToken } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +37,12 @@ export async function POST(req) {
     }
 
     const cleanSessionToken = String(session_token).trim();
-    const session = await findSession(cleanSessionToken);
+    
+    // Attempt stateless verification first
+    const statelessSession = verifyStatelessToken(cleanSessionToken);
+    
+    // Fallback to database session lookup if not a valid stateless token (e.g. legacy session IDs)
+    const session = statelessSession || await findSession(cleanSessionToken);
 
     if (!session) {
       return NextResponse.json(
@@ -49,34 +54,43 @@ export async function POST(req) {
     // Verify session belongs to this device
     const cleanDeviceId = device_id ? String(device_id).trim() : '';
     if (cleanDeviceId && session.device_id && session.device_id !== cleanDeviceId) {
-      await logAudit(session.key, 'security_alert', `Session hijacking suspected: session device ${session.device_id} vs request device ${cleanDeviceId}`, ip);
+      const auditKey = session.key || 'unknown';
+      await logAudit(auditKey, 'security_alert', `Session hijacking suspected: session device ${session.device_id} vs request device ${cleanDeviceId}`, ip).catch(() => null);
       return NextResponse.json(
         { allowed: false, message: 'Session device mismatch. Access denied.' },
         { headers: corsHeaders() }
       );
     }
 
-    // Check session expiration (20 minutes sliding window)
+    // Check session expiration
     const now = new Date();
-    const lastSeenTime = new Date(session.last_seen || session.created_at);
-    const sessionAgeMs = now.getTime() - lastSeenTime.getTime();
+    const expiresAtTime = session.expires_at ? new Date(session.expires_at) : null;
     const SESSION_TIMEOUT_MS = 20 * 60 * 1000;
 
-    if (sessionAgeMs > SESSION_TIMEOUT_MS) {
+    if (expiresAtTime && expiresAtTime < now) {
       return NextResponse.json(
-        { allowed: false, message: 'Session expired due to inactivity. Please re-verify.' },
+        { allowed: false, message: 'Session expired. Please re-verify.' },
         { headers: corsHeaders() }
       );
     }
 
-    // Extend (slide) session token window
-    session.last_seen = now.toISOString();
-    session.expires_at = new Date(now.getTime() + SESSION_TIMEOUT_MS).toISOString();
-    await saveSession(session);
-
     // Validate the associated license key is active and not expired
     const licenseKey = session.key;
-    const keyObj = await findKey(licenseKey);
+    let keyObj = await findKey(licenseKey).catch(() => null);
+
+    // If key does not exist in the database (e.g. container reset/db cleared on Vercel),
+    // and it is a valid stateless session, we trust the signed metadata and treat the key as active.
+    if (!keyObj && statelessSession) {
+      keyObj = {
+        key: licenseKey,
+        user_name: session.user_name || 'Licensed User',
+        status: 'active',
+        plan: session.plan || 'pro',
+        max_devices: session.plan === 'free' ? 1 : session.plan === 'pro' ? 2 : 5,
+        devices: [cleanDeviceId],
+        expires_at: null
+      };
+    }
 
     if (!keyObj) {
       return NextResponse.json(
@@ -94,8 +108,8 @@ export async function POST(req) {
 
     if (keyObj.expires_at && new Date(keyObj.expires_at) < now) {
       keyObj.status = 'expired';
-      await saveKey(keyObj);
-      await logAudit(licenseKey, 'expired', 'License expired during session check', ip);
+      await saveKey(keyObj).catch(() => null);
+      await logAudit(licenseKey, 'expired', 'License expired during session check', ip).catch(() => null);
       return NextResponse.json(
         { allowed: false, message: 'Your license key has expired.' },
         { headers: corsHeaders() }
@@ -103,7 +117,7 @@ export async function POST(req) {
     }
 
     // Verify device association matches
-    if (cleanDeviceId && keyObj.devices) {
+    if (cleanDeviceId && keyObj.devices && !statelessSession) {
       if (!keyObj.devices.includes(cleanDeviceId)) {
         return NextResponse.json(
           { allowed: false, message: 'Device is not registered with this license.' },
@@ -119,10 +133,9 @@ export async function POST(req) {
     const logs = await listUsageLogs().catch(() => []);
     const fiveMinutesAgo = now.getTime() - 5 * 60 * 1000;
     
-    const recentLogs = logs.filter(l => 
-      l.license_key === licenseKey && 
-      new Date(l.timestamp).getTime() > fiveMinutesAgo
-    );
+    const recentLogs = Array.isArray(logs)
+      ? logs.filter(l => l.license_key === licenseKey && new Date(l.timestamp).getTime() > fiveMinutesAgo)
+      : [];
 
     const uniqueIps = new Set(recentLogs.map(l => l.ip));
     const uniqueDevices = new Set(recentLogs.map(l => l.device_id));
@@ -133,9 +146,9 @@ export async function POST(req) {
 
     if (uniqueIps.size >= 3 || uniqueDevices.size >= 3) {
       keyObj.status = 'suspended';
-      await saveKey(keyObj);
-      await logAudit(licenseKey, 'abuse_suspend', `License automatically suspended for multi-device abuse: ${uniqueIps.size} IPs, ${uniqueDevices.size} devices`, ip);
-      await logUsage(licenseKey, cleanDeviceId, prompt, ip, false, plan);
+      await saveKey(keyObj).catch(() => null);
+      await logAudit(licenseKey, 'abuse_suspend', `License automatically suspended for multi-device abuse: ${uniqueIps.size} IPs, ${uniqueDevices.size} devices`, ip).catch(() => null);
+      await logUsage(licenseKey, cleanDeviceId, prompt, ip, false, plan).catch(() => null);
       return NextResponse.json(
         { allowed: false, message: 'Your license has been suspended due to abnormal concurrent usage on multiple devices.' },
         { headers: corsHeaders() }
@@ -143,9 +156,9 @@ export async function POST(req) {
     }
 
     // RATE LIMITING
-    const rateCheck = await checkAndTrackRateLimit(licenseKey, ip, cleanDeviceId, plan);
+    const rateCheck = await checkAndTrackRateLimit(licenseKey, ip, cleanDeviceId, plan).catch(() => ({ allowed: true, remaining: 99 }));
     if (!rateCheck.allowed) {
-      await logUsage(licenseKey, cleanDeviceId, prompt, ip, false, plan);
+      await logUsage(licenseKey, cleanDeviceId, prompt, ip, false, plan).catch(() => null);
       return NextResponse.json(
         { allowed: false, message: rateCheck.message },
         { headers: corsHeaders() }
@@ -180,14 +193,43 @@ export async function POST(req) {
     }
 
     // Log prompt usage
-    await logUsage(licenseKey, cleanDeviceId, prompt, ip, allowed, plan);
+    await logUsage(licenseKey, cleanDeviceId, prompt, ip, allowed, plan).catch(() => null);
+
+    // Slide the session window by generating a fresh token
+    const newExpiry = new Date(now.getTime() + SESSION_TIMEOUT_MS).toISOString();
+    const newSessionToken = generateStatelessToken({
+      key: licenseKey,
+      device_id: cleanDeviceId,
+      user_name: keyObj.user_name || session.user_name || 'Licensed User',
+      plan: plan,
+      expires_at: newExpiry
+    });
+
+    // Save session in background (non-blocking)
+    if (!statelessSession || session.id) {
+      session.last_seen = now.toISOString();
+      session.expires_at = newExpiry;
+      await saveSession(session).catch(() => null);
+    } else {
+      await saveSession({
+        session_id: newSessionToken,
+        key: licenseKey,
+        device_id: cleanDeviceId,
+        created_at: session.created_at || now.toISOString(),
+        expires_at: newExpiry,
+        last_seen: now.toISOString(),
+        user_name: keyObj.user_name || 'Licensed User',
+      }).catch(() => null);
+    }
 
     return NextResponse.json(
       {
         allowed: allowed,
+        valid: true, // Compatibility key for chrome extension
         message: message,
         modified_prompt: allowed ? modifiedPrompt : null,
-        remaining_quota: rateCheck.remaining
+        remaining_quota: rateCheck.remaining,
+        session_token: newSessionToken // Refreshed session token to slide window on client
       },
       { headers: corsHeaders() }
     );

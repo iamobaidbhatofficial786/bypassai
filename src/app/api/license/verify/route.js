@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { findKey, saveKey, saveSession, logAudit, getSystemSettings } from '@/lib/db';
+import { findKey, saveKey, saveSession, logAudit, getSystemSettings, generateStatelessToken } from '@/lib/db';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -120,9 +120,18 @@ export async function POST(req) {
       await saveKey(keyObj);
     }
 
-    // Generate active session ID (session token)
-    const sessionId = `sess_${crypto.randomBytes(16).toString('hex')}`;
+    const plan = keyObj.plan || 'pro';
     const sessionExpiry = new Date(now.getTime() + 20 * 60 * 1000).toISOString(); // 20 minutes short-lived
+    
+    // Generate active session ID (stateless signed token)
+    const sessionData = {
+      key: keyObj.key,
+      device_id: cleanDeviceId,
+      user_name: keyObj.user_name,
+      plan: plan,
+      expires_at: sessionExpiry
+    };
+    const sessionId = generateStatelessToken(sessionData);
     
     // Save session
     await saveSession({
@@ -133,14 +142,14 @@ export async function POST(req) {
       expires_at: sessionExpiry,
       last_seen: now.toISOString(),
       user_name: keyObj.user_name,
-    });
+    }).catch(() => null);
 
-    const plan = keyObj.plan || 'pro';
     const rateLimits = plan === 'free' ? { min: 2, day: 10 } : plan === 'pro' ? { min: 20, day: 200 } : { min: 100, day: 10000 };
 
     return NextResponse.json(
       {
         valid: true,
+        allowed: true, // Compatibility key for chrome extension
         session_token: sessionId,
         plan: plan,
         limits: rateLimits,

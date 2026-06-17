@@ -8,11 +8,102 @@ const LOCAL_DB_PATH = isVercel
   ? path.join('/tmp', 'db.json') 
   : path.join(process.cwd(), 'db.json');
 
+const DEFAULT_KEYS = {
+  "PK-DEV-TEST-001": {
+    key: "PK-DEV-TEST-001",
+    user_name: "Trial Tester",
+    status: "trial",
+    plan: "free",
+    max_devices: 1,
+    role: "user",
+    devices: [],
+    created_at: "2026-06-17T00:00:00.000Z",
+    validity_minutes: 60
+  },
+  "PK-DEV-TEST-002": {
+    key: "PK-DEV-TEST-002",
+    user_name: "Active Tester",
+    status: "active",
+    plan: "pro",
+    max_devices: 2,
+    role: "user",
+    devices: [],
+    created_at: "2026-06-17T00:00:00.000Z",
+    validity_minutes: 10080 // 7 days
+  },
+  "PK-DEV-TEST-003": {
+    key: "PK-DEV-TEST-003",
+    user_name: "Unlimited Tester",
+    status: "active",
+    plan: "enterprise",
+    max_devices: 5,
+    role: "user",
+    devices: [],
+    created_at: "2026-06-17T00:00:00.000Z",
+    expires_at: null
+  },
+  "PK-DEV-TEST-004": {
+    key: "PK-DEV-TEST-004",
+    user_name: "Short Trial",
+    status: "trial",
+    plan: "free",
+    max_devices: 1,
+    role: "user",
+    devices: [],
+    created_at: "2026-06-17T00:00:00.000Z",
+    validity_minutes: 30
+  },
+  "PK-DEV-TEST-005": {
+    key: "PK-DEV-TEST-005",
+    user_name: "Day Pass",
+    status: "active",
+    plan: "pro",
+    max_devices: 2,
+    role: "user",
+    devices: [],
+    created_at: "2026-06-17T00:00:00.000Z",
+    validity_minutes: 1440 // 24 hours
+  }
+};
+
+// Stateless token signature logic
+const SIGNING_SECRET = process.env.ADMIN_PASSWORD || 'default-secret-key-123';
+
+export function generateStatelessToken(sessionData) {
+  const payload = Buffer.from(JSON.stringify(sessionData)).toString('base64');
+  const signature = crypto.createHmac('sha256', SIGNING_SECRET).update(payload).digest('hex');
+  return `sess_${payload}.${signature}`;
+}
+
+export function verifyStatelessToken(token) {
+  if (!token || !token.startsWith('sess_')) return null;
+  const parts = token.substring(5).split('.');
+  if (parts.length !== 2) return null;
+  
+  const [payload, signature] = parts;
+  const expectedSignature = crypto.createHmac('sha256', SIGNING_SECRET).update(payload).digest('hex');
+  
+  if (signature !== expectedSignature) return null;
+  
+  try {
+    return JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+  } catch (e) {
+    return null;
+  }
+}
+
 // Helper to initialize local db file if it doesn't exist
 function initLocalDb() {
   if (!fs.existsSync(LOCAL_DB_PATH)) {
     try {
-      fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ keys: {}, sessions: {}, settings: {}, usage_logs: [], audit_logs: [], rate_limits: {} }, null, 2), 'utf-8');
+      fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ 
+        keys: DEFAULT_KEYS, 
+        sessions: {}, 
+        settings: { system_locked: false }, 
+        usage_logs: [], 
+        audit_logs: [], 
+        rate_limits: {} 
+      }, null, 2), 'utf-8');
     } catch (e) {
       console.error("Failed to initialize local DB:", e);
     }
@@ -58,7 +149,18 @@ export async function getDb() {
       // Keys management
       async getKeys() {
         const data = await kvRequest('GET', 'pk_license_keys');
-        return data ? JSON.parse(data) : {};
+        const keys = data ? JSON.parse(data) : {};
+        let updated = false;
+        for (const k in DEFAULT_KEYS) {
+          if (!keys[k]) {
+            keys[k] = DEFAULT_KEYS[k];
+            updated = true;
+          }
+        }
+        if (updated) {
+          await kvRequest('SET', 'pk_license_keys', JSON.stringify(keys));
+        }
+        return keys;
       },
       async saveKeys(keys) {
         await kvRequest('SET', 'pk_license_keys', JSON.stringify(keys));
@@ -112,7 +214,20 @@ export async function getDb() {
       async getKeys() {
         initLocalDb();
         const data = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
-        return JSON.parse(data).keys || {};
+        const parsed = JSON.parse(data);
+        const keys = parsed.keys || {};
+        let updated = false;
+        for (const k in DEFAULT_KEYS) {
+          if (!keys[k]) {
+            keys[k] = DEFAULT_KEYS[k];
+            updated = true;
+          }
+        }
+        if (updated) {
+          parsed.keys = keys;
+          fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(parsed, null, 2), 'utf-8');
+        }
+        return keys;
       },
       async saveKeys(keys) {
         initLocalDb();

@@ -399,8 +399,15 @@ async function checkPromptBeforeDelivery(message) {
     throw new Error(checkResult.message || "Prompt rejected by security policy.");
   }
 
+  const patch = {};
   if (checkResult.remaining_quota !== undefined) {
-    chrome.storage.local.set({ ql_remaining_quota: checkResult.remaining_quota });
+    patch.ql_remaining_quota = checkResult.remaining_quota;
+  }
+  if (checkResult.session_token) {
+    patch.ql_session_id = checkResult.session_token;
+  }
+  if (Object.keys(patch).length > 0) {
+    chrome.storage.local.set(patch);
   }
 
   return checkResult.modified_prompt || message || "";

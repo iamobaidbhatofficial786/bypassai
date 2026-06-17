@@ -39,10 +39,8 @@
           }
         } else {
           try {
-            if (localStorage.getItem("__ql_bypass_active") === "1") {
-              if (document.documentElement.getAttribute("data-ql-bypass") !== "1") {
-                activatePkCreditBypass();
-              }
+            if (document.documentElement.getAttribute("data-ql-bypass") !== "1" || localStorage.getItem("__ql_bypass_active") !== "1") {
+              activatePkCreditBypass();
             }
           } catch (e) {}
         }

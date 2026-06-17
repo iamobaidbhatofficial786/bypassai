@@ -182,13 +182,19 @@ export async function POST(req) {
       }
     }
 
-    // Enhance prompt: append target instructions if allowed
+    // Enhance prompt: append target instructions if allowed and not already present
     if (allowed) {
       // Enhance prompt with standard optimization instructions if the user requests it or by default for Pro/Enterprise
       if (plan === 'pro') {
-        modifiedPrompt = modifiedPrompt + '\n\n[ByPass AI System Hint: Optimize the generated code for production stability and modern styling.]';
+        const hint = '[ByPass AI System Hint: Optimize the generated code for production stability and modern styling.]';
+        if (!modifiedPrompt.includes('[ByPass AI System Hint:') && !modifiedPrompt.includes('[ByPass AI Enterprise Hint:')) {
+          modifiedPrompt = modifiedPrompt + '\n\n' + hint;
+        }
       } else if (plan === 'enterprise') {
-        modifiedPrompt = modifiedPrompt + '\n\n[ByPass AI Enterprise Hint: Enforce comprehensive error boundaries, absolute responsiveness, and clear documentation in the codebase.]';
+        const hint = '[ByPass AI Enterprise Hint: Enforce comprehensive error boundaries, absolute responsiveness, and clear documentation in the codebase.]';
+        if (!modifiedPrompt.includes('[ByPass AI System Hint:') && !modifiedPrompt.includes('[ByPass AI Enterprise Hint:')) {
+          modifiedPrompt = modifiedPrompt + '\n\n' + hint;
+        }
       }
     }
 

@@ -38,7 +38,7 @@ export async function POST(req) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    let { key, user_name, status, expires_at, validity_minutes, max_devices, role } = body;
+    let { key, user_name, status, expires_at, validity_minutes, max_devices, role, plan } = body;
 
     // Generate random key if not provided (Format: XXXX-XXXX-XXXX-XXXX)
     if (!key) {
@@ -62,6 +62,7 @@ export async function POST(req) {
       key,
       user_name: user_name || 'Licensed User',
       status: status || 'active',
+      plan: plan || 'pro',
       expires_at: expires_at || null,
       validity_minutes: validity_minutes ? parseInt(validity_minutes) : null,
       max_devices: max_devices ? parseInt(max_devices) : 2,
@@ -86,7 +87,7 @@ export async function PUT(req) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { key, user_name, status, expires_at, validity_minutes, max_devices, role, reset_devices } = body;
+    const { key, user_name, status, expires_at, validity_minutes, max_devices, role, reset_devices, plan } = body;
 
     if (!key) {
       return NextResponse.json({ error: 'Key is required' }, { status: 400 });
@@ -100,6 +101,7 @@ export async function PUT(req) {
     // Update fields
     if (user_name !== undefined) keyObj.user_name = user_name;
     if (status !== undefined) keyObj.status = status;
+    if (plan !== undefined) keyObj.plan = plan || 'pro';
     if (expires_at !== undefined) keyObj.expires_at = expires_at || null;
     if (validity_minutes !== undefined) keyObj.validity_minutes = validity_minutes ? parseInt(validity_minutes) : null;
     if (max_devices !== undefined) keyObj.max_devices = max_devices ? parseInt(max_devices) : 2;

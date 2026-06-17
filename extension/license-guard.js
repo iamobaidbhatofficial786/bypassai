@@ -18,7 +18,7 @@
   }
 
   function pkAssertSessionUrl() {
-    return pkApiBase() + "/functions/v1/assert-session";
+    return pkApiBase() + "/api/license/verify";
   }
 
   function pkLicenseHeaders(extra) {
@@ -184,9 +184,11 @@
         }).then(function (data) {
           if (data && data.allowed) {
             _assertCache = { at: Date.now(), allowed: true };
-            if (typeof pkLicenseStoragePatch === "function" && (data.expires_at || data.validity_minutes != null)) {
-              chrome.storage.local.set(pkLicenseStoragePatch(data));
+            var patch = typeof pkLicenseStoragePatch === "function" ? pkLicenseStoragePatch(data) : {};
+            if (data.session_token || data.session_id) {
+              patch.ql_session_id = data.session_token || data.session_id;
             }
+            chrome.storage.local.set(patch);
             return data;
           }
           if (typeof pkInvalidateAssertCache === "function") {

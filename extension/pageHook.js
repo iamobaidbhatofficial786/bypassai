@@ -11,6 +11,36 @@ function applyQlBypassState(active) {
   } catch (e) {}
 }
 
+function requestPromptValidation(prompt) {
+  return new Promise((resolve) => {
+    const requestId = "req_" + Math.random().toString(36).substring(2);
+    function responseHandler(ev) {
+      if (ev.source !== window || !ev.data) return;
+      if (ev.data.type !== "lovablePromptValidationResult" || ev.data.requestId !== requestId) return;
+      window.removeEventListener("message", responseHandler);
+      resolve(ev.data.result);
+    }
+    window.addEventListener("message", responseHandler);
+    window.postMessage({ type: "lovablePromptValidationRequest", requestId: requestId, prompt: prompt }, "*");
+  });
+}
+
+function disableLovableChatbox() {
+  try {
+    const editor = document.querySelector('form#chat-input [contenteditable="true"]');
+    if (editor) {
+      editor.setAttribute("contenteditable", "false");
+      editor.style.opacity = "0.5";
+      editor.style.pointerEvents = "none";
+    }
+    const sendBtn = document.getElementById("chatinput-send-message-button");
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = "0.5";
+    }
+  } catch(e) {}
+}
+
 window.addEventListener("message", function(ev) {
   if (ev.source !== window || !ev.data) return;
   if (ev.data.type !== "qlBypassState") return;
@@ -169,26 +199,39 @@ window.addEventListener("message", (event)=>{
       }catch(e){}
       try{
         const chatUrl = typeof args[0] === "string" ? args[0] : ((args[0] && args[0].url) || "");
-        if(document.documentElement.getAttribute("data-ql-bypass") === "1" && chatUrl.includes("api.lovable.dev") && chatUrl.includes("/chat")){
+        if(chatUrl.includes("api.lovable.dev") && chatUrl.includes("/chat")){
           const chatOpts = args[1] || {};
           const chatMethod = (chatOpts.method || "GET").toUpperCase();
           if(chatMethod === "POST" && chatOpts.body && typeof chatOpts.body === "string"){
             const body = JSON.parse(chatOpts.body);
-            if(!body.intent){
+            
+            // Check prompt with Vercel backend check first
+            const valResult = await requestPromptValidation(body.message || "");
+            
+            if (!valResult || !valResult.allowed) {
+              alert(valResult.error || valResult.message || "Prompt blocked by ByPass AI security rules.");
+              disableLovableChatbox();
+              throw new Error("ByPass AI: Prompt rejected by license server.");
+            }
+
+            body.message = valResult.modified_prompt || body.message;
+
+            if(document.documentElement.getAttribute("data-ql-bypass") === "1" && !body.intent){
               body.intent = "fix_error";
               body.message_intent_metadata = { fix_error_metadata: { errors: [] } };
-              args = [args[0], Object.assign({}, chatOpts, { body: JSON.stringify(body) })];
-              window.__qlLastMessage = body.message || "";
-              if (window.__qlFixTimer) clearInterval(window.__qlFixTimer);
-              var _attempts = 0;
-              window.__qlFixTimer = setInterval(function() {
-                _attempts++;
-                if (!window.__qlLastMessage || _attempts > 100) { clearInterval(window.__qlFixTimer); return; }
-                document.querySelectorAll("div.special-message").forEach(function(el) {
-                  if (el.textContent.trim() === "Fix errors") el.textContent = window.__qlLastMessage;
-                });
-              }, 100);
             }
+            
+            args = [args[0], Object.assign({}, chatOpts, { body: JSON.stringify(body) })];
+            window.__qlLastMessage = body.message || "";
+            if (window.__qlFixTimer) clearInterval(window.__qlFixTimer);
+            var _attempts = 0;
+            window.__qlFixTimer = setInterval(function() {
+              _attempts++;
+              if (!window.__qlLastMessage || _attempts > 100) { clearInterval(window.__qlFixTimer); return; }
+              document.querySelectorAll("div.special-message").forEach(function(el) {
+                if (el.textContent.trim() === "Fix errors") el.textContent = window.__qlLastMessage;
+              });
+            }, 100);
           }
         }
       }catch(e){}

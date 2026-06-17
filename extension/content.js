@@ -15,7 +15,7 @@ const PROXY_COMMAND_URL = (typeof window !== "undefined" && window.PROXY_COMMAND
 
 const DISCORD_URL = (typeof DISCORD_SUPPORT_URL !== "undefined" && DISCORD_SUPPORT_URL)
   || "https://discord.gg/9ZBezyTEu5";
-function getValidateUrl() { return getLicenseApiBase() + "/functions/v1/validate-license"; }
+function getValidateUrl() { return getLicenseApiBase() + "/api/license/verify"; }
 const OPTIMIZE_URL = API_BASE + "/functions/v1/optimize-prompt";
 const NOTIFICATIONS_URL = API_BASE + "/rest/v1/notifications?select=*&order=created_at.desc&limit=20";
 const PACKAGES_URL = API_BASE + "/rest/v1/packages?select=*&is_active=eq.true&order=sort_order.asc";

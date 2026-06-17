@@ -81,6 +81,21 @@
     });
   } catch (e) {}
 
+  window.addEventListener("message", function (ev) {
+    if (ev.source !== window || !ev.data) return;
+    if (ev.data.type === "lovablePromptValidationRequest") {
+      const requestId = ev.data.requestId;
+      chrome.runtime.sendMessage({ action: "checkPrompt", message: ev.data.prompt }, function (resp) {
+        const result = resp || { allowed: false, error: "Validation server connection failed." };
+        window.postMessage({
+          type: "lovablePromptValidationResult",
+          requestId: requestId,
+          result: result
+        }, "*");
+      });
+    }
+  });
+
   function projectIdFromPage() {
     try {
       var m = window.location.pathname.match(/projects\/([0-9a-fA-F-]{36})/i);

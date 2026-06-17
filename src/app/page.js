@@ -15,6 +15,9 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ total: 0, active: 0, trial: 0, online: 0 });
   const [isSystemLocked, setIsSystemLocked] = useState(false);
   const [dbEphemeralWarning, setDbEphemeralWarning] = useState(false);
+  const [usageLogs, setUsageLogs] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [activeLogTab, setActiveLogTab] = useState('usage');
 
   // UI state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -25,6 +28,7 @@ export default function Dashboard() {
     key: '',
     user_name: '',
     status: 'active',
+    plan: 'pro',
     validity_type: 'lifetime', // 'lifetime', 'minutes', 'days'
     validity_value: '60',
     max_devices: '2',
@@ -53,10 +57,12 @@ export default function Dashboard() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       
-      const [keysRes, sessionsRes, settingsRes] = await Promise.all([
+      const [keysRes, sessionsRes, settingsRes, usageLogsRes, auditLogsRes] = await Promise.all([
         fetch('/api/keys', { headers }),
         fetch('/api/sessions', { headers }),
-        fetch('/api/settings', { headers })
+        fetch('/api/settings', { headers }),
+        fetch('/api/logs/usage', { headers }).catch(() => null),
+        fetch('/api/logs/audit', { headers }).catch(() => null)
       ]);
 
       if (keysRes.status === 401 || sessionsRes.status === 401 || settingsRes.status === 401) {
@@ -72,6 +78,15 @@ export default function Dashboard() {
       setSessions(Array.isArray(sessionsData) ? sessionsData : []);
       setIsSystemLocked(!!settingsData.system_locked);
       setDbEphemeralWarning(!!settingsData.db_ephemeral_warning);
+
+      if (usageLogsRes && usageLogsRes.ok) {
+        const uLogs = await usageLogsRes.json();
+        setUsageLogs(Array.isArray(uLogs) ? uLogs : []);
+      }
+      if (auditLogsRes && auditLogsRes.ok) {
+        const aLogs = await auditLogsRes.json();
+        setAuditLogs(Array.isArray(aLogs) ? aLogs : []);
+      }
       
       // Calculate Stats
       const total = keysData.length || 0;
@@ -165,6 +180,7 @@ export default function Dashboard() {
           key: newKey.key || undefined,
           user_name: newKey.user_name || undefined,
           status: newKey.status,
+          plan: newKey.plan,
           validity_minutes,
           max_devices: parseInt(newKey.max_devices),
           role: newKey.role,
@@ -177,6 +193,7 @@ export default function Dashboard() {
           key: '',
           user_name: '',
           status: 'active',
+          plan: 'pro',
           validity_type: 'lifetime',
           validity_value: '60',
           max_devices: '2',
@@ -466,6 +483,7 @@ export default function Dashboard() {
                   <tr>
                     <th>License Key</th>
                     <th>User Name</th>
+                    <th>Plan</th>
                     <th>Role</th>
                     <th>Status</th>
                     <th>Expires At</th>
@@ -480,6 +498,18 @@ export default function Dashboard() {
                       <tr key={k.key}>
                         <td className="mono" style={{ fontWeight: 'bold' }}>{k.key}</td>
                         <td>{k.user_name}</td>
+                        <td>
+                          <span className={`badge`} style={{
+                            background: k.plan === 'enterprise' ? 'rgba(139, 92, 246, 0.15)' : k.plan === 'pro' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(107, 114, 128, 0.15)',
+                            color: k.plan === 'enterprise' ? '#a78bfa' : k.plan === 'pro' ? '#60a5fa' : '#9ca3af',
+                            border: k.plan === 'enterprise' ? '1px solid rgba(139, 92, 246, 0.3)' : k.plan === 'pro' ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(107, 114, 128, 0.3)',
+                            fontSize: '0.75rem',
+                            padding: '0.15rem 0.4rem',
+                            borderRadius: '4px'
+                          }}>
+                            {k.plan || 'pro'}
+                          </span>
+                        </td>
                         <td>
                           <span className={`badge badge-role-${k.role || 'user'}`}>
                             {k.role || 'user'}
@@ -543,7 +573,7 @@ export default function Dashboard() {
                       Kick
                     </button>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: varName => 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <div>Key: <span className="mono">{s.key}</span></div>
                     <div>Device ID: <span className="mono" title={s.device_id}>{s.device_id.substring(0, 15)}...</span></div>
                     <div style={{ fontSize: '0.7rem', opacity: 0.8, color: 'var(--accent-secondary)', marginTop: '0.2rem' }}>
@@ -556,6 +586,108 @@ export default function Dashboard() {
           </div>
         </section>
       </div>
+
+      {/* Logs Section */}
+      <section className="glass-panel" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+        <div className="panel-title-bar" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.8rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '1.5rem' }}>
+            <h2 
+              className="panel-title" 
+              style={{ cursor: 'pointer', opacity: activeLogTab === 'usage' ? 1 : 0.5, borderBottom: activeLogTab === 'usage' ? '2px solid var(--accent-secondary)' : 'none', paddingBottom: '0.4rem', fontSize: '1.1rem' }}
+              onClick={() => setActiveLogTab('usage')}
+            >
+              📊 Usage Logs
+            </h2>
+            <h2 
+              className="panel-title" 
+              style={{ cursor: 'pointer', opacity: activeLogTab === 'audit' ? 1 : 0.5, borderBottom: activeLogTab === 'audit' ? '2px solid var(--accent-secondary)' : 'none', paddingBottom: '0.4rem', fontSize: '1.1rem' }}
+              onClick={() => setActiveLogTab('audit')}
+            >
+              🛡 Security Audit Logs
+            </h2>
+          </div>
+        </div>
+
+        <div className="table-wrapper" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+          {activeLogTab === 'usage' ? (
+            usageLogs.length === 0 ? (
+              <p className="empty-state" style={{ padding: '2rem 1rem' }}>No usage logs recorded yet.</p>
+            ) : (
+              <table className="premium-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>License Key</th>
+                    <th>Device ID</th>
+                    <th>IP Address</th>
+                    <th>Plan</th>
+                    <th>Status</th>
+                    <th>Prompt Preview</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usageLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td style={{ fontSize: '0.75rem' }}>{formatTime(log.timestamp)}</td>
+                      <td className="mono">{log.license_key}</td>
+                      <td className="mono" style={{ fontSize: '0.7rem' }} title={log.device_id}>{log.device_id.substring(0, 12)}...</td>
+                      <td>{log.ip}</td>
+                      <td>
+                        <span className="badge" style={{
+                          background: log.plan === 'enterprise' ? 'rgba(139, 92, 246, 0.1)' : log.plan === 'pro' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                          color: log.plan === 'enterprise' ? '#c084fc' : log.plan === 'pro' ? '#60a5fa' : '#9ca3af'
+                        }}>{log.plan}</span>
+                      </td>
+                      <td>
+                        <span className={`badge ${log.allowed ? 'badge-active' : 'badge-expired'}`}>
+                          {log.allowed ? 'Allowed' : 'Blocked/Limit'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.75rem', opacity: 0.8, maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {log.prompt_preview}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          ) : (
+            auditLogs.length === 0 ? (
+              <p className="empty-state" style={{ padding: '2rem 1rem' }}>No security audit logs recorded yet.</p>
+            ) : (
+              <table className="premium-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>License Key</th>
+                    <th>Action</th>
+                    <th>IP Address</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td style={{ fontSize: '0.75rem' }}>{formatTime(log.timestamp)}</td>
+                      <td className="mono">{log.license_key}</td>
+                      <td>
+                        <span className={`badge`} style={{
+                          background: log.action.includes('suspend') || log.action.includes('failed') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                          color: log.action.includes('suspend') || log.action.includes('failed') ? '#f87171' : '#60a5fa'
+                        }}>
+                          {log.action}
+                        </span>
+                      </td>
+                      <td>{log.ip}</td>
+                      <td style={{ fontSize: '0.75rem', opacity: 0.9 }}>{log.details}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          )}
+        </div>
+      </section>
 
       {/* CREATE KEY MODAL */}
       {showCreateModal && (
@@ -600,6 +732,19 @@ export default function Dashboard() {
                   >
                     <option value="active">Active (PRO)</option>
                     <option value="trial">Trial (TEST)</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>SaaS Plan</label>
+                  <select
+                    className="form-control"
+                    value={newKey.plan}
+                    onChange={(e) => setNewKey({ ...newKey, plan: e.target.value })}
+                  >
+                    <option value="free">Free Plan</option>
+                    <option value="pro">Pro Plan</option>
+                    <option value="enterprise">Enterprise Plan</option>
                   </select>
                 </div>
 
@@ -714,6 +859,19 @@ export default function Dashboard() {
                     <option value="active">Active (PRO)</option>
                     <option value="trial">Trial (TEST)</option>
                     <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>SaaS Plan</label>
+                  <select
+                    className="form-control"
+                    value={editingKey.plan || 'pro'}
+                    onChange={(e) => setEditingKey({ ...editingKey, plan: e.target.value })}
+                  >
+                    <option value="free">Free Plan</option>
+                    <option value="pro">Pro Plan</option>
+                    <option value="enterprise">Enterprise Plan</option>
                   </select>
                 </div>
 

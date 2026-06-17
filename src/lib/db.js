@@ -11,7 +11,7 @@ const LOCAL_DB_PATH = isVercel
 function initLocalDb() {
   if (!fs.existsSync(LOCAL_DB_PATH)) {
     try {
-      fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ keys: {}, sessions: {}, settings: {} }, null, 2), 'utf-8');
+      fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify({ keys: {}, sessions: {}, settings: {}, usage_logs: [], audit_logs: [], rate_limits: {} }, null, 2), 'utf-8');
     } catch (e) {
       console.error("Failed to initialize local DB:", e);
     }
@@ -79,6 +79,29 @@ export async function getDb() {
       },
       async saveSettings(settings) {
         await kvRequest('SET', 'pk_settings', JSON.stringify(settings));
+      },
+
+      // Logs & limits
+      async getUsageLogs() {
+        const data = await kvRequest('GET', 'pk_usage_logs');
+        return data ? JSON.parse(data) : [];
+      },
+      async saveUsageLogs(logs) {
+        await kvRequest('SET', 'pk_usage_logs', JSON.stringify(logs));
+      },
+      async getAuditLogs() {
+        const data = await kvRequest('GET', 'pk_audit_logs');
+        return data ? JSON.parse(data) : [];
+      },
+      async saveAuditLogs(logs) {
+        await kvRequest('SET', 'pk_audit_logs', JSON.stringify(logs));
+      },
+      async getRateLimits() {
+        const data = await kvRequest('GET', 'pk_rate_limits');
+        return data ? JSON.parse(data) : {};
+      },
+      async saveRateLimits(limits) {
+        await kvRequest('SET', 'pk_rate_limits', JSON.stringify(limits));
       }
     };
   } else {
@@ -116,6 +139,39 @@ export async function getDb() {
         initLocalDb();
         const data = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf-8'));
         data.settings = settings;
+        fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+      },
+      async getUsageLogs() {
+        initLocalDb();
+        const data = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
+        return JSON.parse(data).usage_logs || [];
+      },
+      async saveUsageLogs(logs) {
+        initLocalDb();
+        const data = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf-8'));
+        data.usage_logs = logs;
+        fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+      },
+      async getAuditLogs() {
+        initLocalDb();
+        const data = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
+        return JSON.parse(data).audit_logs || [];
+      },
+      async saveAuditLogs(logs) {
+        initLocalDb();
+        const data = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf-8'));
+        data.audit_logs = logs;
+        fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+      },
+      async getRateLimits() {
+        initLocalDb();
+        const data = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
+        return JSON.parse(data).rate_limits || {};
+      },
+      async saveRateLimits(limits) {
+        initLocalDb();
+        const data = JSON.parse(fs.readFileSync(LOCAL_DB_PATH, 'utf-8'));
+        data.rate_limits = limits;
         fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
       }
     };
@@ -205,8 +261,8 @@ export async function cleanExpiredSessions() {
   const now = Date.now();
   let changed = false;
   
-  // Define session timeout: if no heartbeat in 30 days, remove session
-  const SESSION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000;
+  // Define session timeout: if no activity in 20 minutes, remove session
+  const SESSION_TIMEOUT_MS = 20 * 60 * 1000;
 
   for (const sid in sessions) {
     const lastSeenTime = new Date(sessions[sid].last_seen).getTime();
@@ -253,4 +309,139 @@ export async function saveSystemSettings(settings) {
     return settings;
   }
   return {};
+}
+
+export async function logUsage(licenseKey, deviceId, prompt, ip, allowed, plan) {
+  const db = await getDb();
+  if (typeof db.getUsageLogs !== 'function') return;
+  const logs = await db.getUsageLogs();
+  
+  const newLog = {
+    id: `log_${crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : crypto.randomBytes(16).toString('hex')}`,
+    license_key: licenseKey,
+    device_id: deviceId || 'unknown',
+    prompt_preview: prompt ? prompt.substring(0, 150) : '',
+    ip: ip || 'unknown',
+    allowed: !!allowed,
+    plan: plan || 'free',
+    timestamp: new Date().toISOString()
+  };
+  
+  logs.unshift(newLog);
+  if (logs.length > 1000) {
+    logs.length = 1000;
+  }
+  await db.saveUsageLogs(logs);
+  return newLog;
+}
+
+export async function logAudit(licenseKey, action, details, ip) {
+  const db = await getDb();
+  if (typeof db.getAuditLogs !== 'function') return;
+  const logs = await db.getAuditLogs();
+  
+  const newLog = {
+    id: `aud_${crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : crypto.randomBytes(16).toString('hex')}`,
+    license_key: licenseKey || 'system',
+    action: action,
+    details: details || '',
+    ip: ip || 'unknown',
+    timestamp: new Date().toISOString()
+  };
+  
+  logs.unshift(newLog);
+  if (logs.length > 1000) {
+    logs.length = 1000;
+  }
+  await db.saveAuditLogs(logs);
+  return newLog;
+}
+
+export async function listUsageLogs() {
+  const db = await getDb();
+  if (typeof db.getUsageLogs !== 'function') return [];
+  return await db.getUsageLogs();
+}
+
+export async function listAuditLogs() {
+  const db = await getDb();
+  if (typeof db.getAuditLogs !== 'function') return [];
+  return await db.getAuditLogs();
+}
+
+export async function checkAndTrackRateLimit(licenseKey, ip, deviceId, plan) {
+  const db = await getDb();
+  if (typeof db.getRateLimits !== 'function') return { allowed: true, remaining: 999 };
+  
+  const limits = await db.getRateLimits();
+  const now = Date.now();
+  const currentMinute = Math.floor(now / 60000);
+  const currentDay = Math.floor(now / 86400000);
+  
+  // Clean up old limit entries periodically to prevent DB bloat
+  let limitKeys = Object.keys(limits);
+  if (limitKeys.length > 5000) {
+    for (const key of limitKeys) {
+      if (limits[key].expire_at && limits[key].expire_at < now) {
+        delete limits[key];
+      }
+    }
+  }
+
+  // Rate configurations
+  const PLAN_LIMITS = {
+    free: { min: 2, day: 10 },
+    pro: { min: 20, day: 200 },
+    enterprise: { min: 100, day: 10000 }
+  };
+
+  const planConf = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+
+  // Track License / IP / Device
+  const lKeyMin = `lim:min:lic:${licenseKey}:${currentMinute}`;
+  const lKeyDay = `lim:day:lic:${licenseKey}:${currentDay}`;
+  const ipKeyMin = `lim:min:ip:${ip}:${currentMinute}`;
+  const ipKeyDay = `lim:day:ip:${ip}:${currentDay}`;
+
+  // Initialize if not exist
+  const initKey = (k, expireOffset) => {
+    if (!limits[k]) {
+      limits[k] = { count: 0, expire_at: now + expireOffset };
+    }
+  };
+
+  initKey(lKeyMin, 60000);
+  initKey(lKeyDay, 86400000);
+  initKey(ipKeyMin, 60000);
+  initKey(ipKeyDay, 86400000);
+
+  // Check rate limit overflow
+  if (limits[lKeyMin].count >= planConf.min) {
+    return { allowed: false, reason: 'rate_limit_minute', message: 'Rate limit exceeded (minute). Please wait.' };
+  }
+  if (limits[lKeyDay].count >= planConf.day) {
+    return { allowed: false, reason: 'rate_limit_day', message: 'Rate limit exceeded (day). Please upgrade plan.' };
+  }
+
+  // IP strict check to prevent brute force/abuse from single client (even on enterprise)
+  const ipMinLimit = plan === 'enterprise' ? 120 : (planConf.min * 2);
+  const ipDayLimit = plan === 'enterprise' ? 10000 : (planConf.day * 2);
+
+  if (limits[ipKeyMin].count >= ipMinLimit) {
+    return { allowed: false, reason: 'ip_limit_minute', message: 'IP is sending prompts too rapidly.' };
+  }
+  if (limits[ipKeyDay].count >= ipDayLimit) {
+    return { allowed: false, reason: 'ip_limit_day', message: 'IP daily usage exceeded.' };
+  }
+
+  // Increment counts
+  limits[lKeyMin].count++;
+  limits[lKeyDay].count++;
+  limits[ipKeyMin].count++;
+  limits[ipKeyDay].count++;
+
+  await db.saveRateLimits(limits);
+
+  const remaining = Math.max(0, planConf.day - limits[lKeyDay].count);
+  return { allowed: true, remaining };
 }

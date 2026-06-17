@@ -360,6 +360,52 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
+async function checkPromptBeforeDelivery(message) {
+  // 1. Get stored license information
+  const storageData = await new Promise(r => chrome.storage.local.get(["ql_session_id", "ql_device_id", "ql_license_api_base"], r));
+  const sessionToken = storageData.ql_session_id || "";
+  let deviceId = storageData.ql_device_id || "";
+  
+  if (!deviceId) {
+    deviceId = "dev_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    await chrome.storage.local.set({ ql_device_id: deviceId });
+  }
+
+  // 2. Call Vercel /api/prompt/check
+  const baseUrl = storageData.ql_license_api_base || (typeof POWERKITS_LICENSE_API_BASE !== "undefined" ? POWERKITS_LICENSE_API_BASE : "https://lov.powerkits.net");
+  const checkUrl = baseUrl + "/api/prompt/check";
+  
+  const checkResp = await fetch(checkUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      session_token: sessionToken,
+      prompt: message || "",
+      device_id: deviceId
+    })
+  });
+  
+  if (!checkResp.ok) {
+    const errText = await checkResp.text();
+    let parsedErr;
+    try { parsedErr = JSON.parse(errText); } catch(e) {}
+    throw new Error((parsedErr && parsedErr.message) || "Backend validation failed.");
+  }
+  
+  const checkResult = await checkResp.json();
+  if (!checkResult.allowed) {
+    throw new Error(checkResult.message || "Prompt rejected by security policy.");
+  }
+
+  if (checkResult.remaining_quota !== undefined) {
+    chrome.storage.local.set({ ql_remaining_quota: checkResult.remaining_quota });
+  }
+
+  return checkResult.modified_prompt || message || "";
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.action === "lovableSync") {
     chrome.storage.local.get(["lovable_token", "lovable_projectId"], function(stored) {
@@ -483,7 +529,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.action === "sendPromptToLovable") {
     (async function () {
       try {
-        await deliverPromptViaTab(msg.message || "", "lovable");
+        const approvedPrompt = await checkPromptBeforeDelivery(msg.message || "");
+        await deliverPromptViaTab(approvedPrompt, "lovable");
         sendResponse({ ok: true });
       } catch (err) {
         sendResponse({ ok: false, error: err.message || "Send failed" });
@@ -495,10 +542,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.action === "sendPromptToPlatform") {
     (async function () {
       try {
-        await deliverPromptViaTab(msg.message || "", msg.platform || "lovable");
+        const approvedPrompt = await checkPromptBeforeDelivery(msg.message || "");
+        await deliverPromptViaTab(approvedPrompt, msg.platform || "lovable");
         sendResponse({ ok: true });
       } catch (err) {
         sendResponse({ ok: false, error: err.message || "Send failed" });
+      }
+    })();
+    return true;
+  }
+
+  if (msg && msg.action === "checkPrompt") {
+    (async function () {
+      try {
+        const approvedPrompt = await checkPromptBeforeDelivery(msg.message || "");
+        sendResponse({ allowed: true, modified_prompt: approvedPrompt });
+      } catch (err) {
+        sendResponse({ allowed: false, error: err.message || "Prompt check failed" });
       }
     })();
     return true;

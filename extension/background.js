@@ -1,9 +1,10 @@
 console.log("[Background] Lovable Powerkits service worker started");
 
 try {
+  importScripts("extension-config.js");
   importScripts("platform-config.js");
 } catch (e) {
-  console.warn("[Background] platform-config.js not loaded:", e && e.message ? e.message : e);
+  console.warn("[Background] configuration scripts not loaded:", e && e.message ? e.message : e);
 }
 
 function decodeJwtExpMs(token) {

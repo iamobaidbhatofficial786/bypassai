@@ -61,7 +61,8 @@
         // If placeholder is not directly on the element, search the parent container
         if (!placeholder) {
           var parent = el.parentElement;
-          for (var depth = 0; depth < 5 && parent; depth++) {
+          // Limit depth to 2 levels to avoid matching text content of the entire panel or layout wrapping containers
+          for (var depth = 0; depth < 2 && parent; depth++) {
             // Check for CodeMirror placeholder class
             var phEl = parent.querySelector(".cm-placeholder, [class*='placeholder']");
             if (phEl) {
@@ -99,8 +100,8 @@
       }
     }
 
-    // 2. Fallback: find a textarea or input that is likely the chat input
-    var textareas = document.querySelectorAll("textarea, input");
+    // 2. Fallback: find a textarea that is likely the chat input (excluding input elements to avoid domain/search fields)
+    var textareas = document.querySelectorAll("textarea");
     for (var i = 0; i < textareas.length; i++) {
       var ta = textareas[i];
       if (!isValidTextInput(ta)) continue;
@@ -109,7 +110,7 @@
       if (!className.includes("monaco") && !className.includes("cm-") && !className.includes("editor") && !className.includes("inputarea")) {
         var rect = ta.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          console.log("[Replit Bridge] SUCCESS: Selected fallback textarea/input:", ta);
+          console.log("[Replit Bridge] SUCCESS: Selected fallback textarea:", ta);
           return ta;
         }
       }

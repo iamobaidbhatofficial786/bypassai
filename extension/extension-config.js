@@ -219,7 +219,8 @@ function pkSafeClearLicenseStorage(cb) {
         "ql_expires_at",
         "ql_activated_at",
         "ql_license_status",
-        "ql_validity_minutes"
+        "ql_validity_minutes",
+        "ql_license_api_base"
       ], function() {
         setTimeout(function() {
           chrome.storage.local.remove(["ql_authorized_write"], function() {

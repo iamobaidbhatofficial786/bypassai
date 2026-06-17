@@ -365,6 +365,9 @@ async function checkPromptBeforeDelivery(message) {
   // 1. Get stored license information
   const storageData = await new Promise(r => chrome.storage.local.get(["ql_session_id", "ql_device_id", "ql_hw_fingerprint", "ql_license_api_base"], r));
   const sessionToken = storageData.ql_session_id || "";
+  if (!sessionToken) {
+    throw new Error("Activate your ByPass AI license in the extension side panel first!");
+  }
   let deviceId = storageData.ql_hw_fingerprint || storageData.ql_device_id || "";
   
   if (!deviceId) {

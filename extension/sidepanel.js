@@ -191,13 +191,53 @@
     var isExtraPlatform = isChatGptPlatform() || isReplitPlatform();
     var planWrap = document.querySelector('.sp-action-left');
     if (planWrap) planWrap.style.display = isExtraPlatform ? 'none' : '';
+    
     var advToggle = document.getElementById('sp-advanced-toggle');
     var advPanel = document.getElementById('sp-advanced-panel');
-    if (advToggle) advToggle.style.display = isExtraPlatform ? 'none' : '';
-    if (advPanel) advPanel.style.display = isExtraPlatform ? 'none' : '';
+    
+    if (isChatGptPlatform()) {
+      if (advToggle) advToggle.style.display = 'none';
+      if (advPanel) advPanel.style.display = 'none';
+    } else if (isReplitPlatform()) {
+      if (advToggle) advToggle.style.display = '';
+      if (advPanel) advPanel.style.display = '';
+      
+      var wmBtn = document.getElementById('sp-remove-watermark');
+      if (wmBtn) {
+        wmBtn.textContent = '🚫 Remove Replit Watermark';
+        wmBtn.style.display = '';
+      }
+      
+      var toHide = ['sp-shield-btn', 'sp-native-chat-btn', 'sp-download-project', 'sp-quick-init', 'sp-publish-project', 'sp-enable-cloud'];
+      toHide.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      var labels = document.querySelectorAll('#sp-advanced-panel .sp-section-label');
+      labels.forEach(function(el) { el.style.display = 'none'; });
+    } else {
+      if (advToggle) advToggle.style.display = '';
+      if (advPanel) advPanel.style.display = '';
+      
+      var wmBtn = document.getElementById('sp-remove-watermark');
+      if (wmBtn) {
+        wmBtn.textContent = 'Remove Watermark';
+        wmBtn.style.display = '';
+      }
+      
+      var toShow = ['sp-shield-btn', 'sp-native-chat-btn', 'sp-download-project', 'sp-quick-init', 'sp-publish-project', 'sp-enable-cloud'];
+      toShow.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = '';
+      });
+      var labels = document.querySelectorAll('#sp-advanced-panel .sp-section-label');
+      labels.forEach(function(el) { el.style.display = ''; });
+    }
+    
     document.querySelectorAll('.sp-platform-btn').forEach(function(btn) {
       btn.classList.toggle('sp-platform-active', btn.getAttribute('data-platform') === spActivePlatform);
     });
+    
     var syncEl = document.getElementById('sp-sync');
     if (syncEl) {
       if (isChatGptPlatform()) {
@@ -1527,6 +1567,7 @@
   }
 
   var SP_WATERMARK_PROMPT = "Add this CSS to global styles on every page: #lovable-badge { display: none !important; visibility: hidden !important; pointer-events: none !important; } Completely remove the entire Lovable branding widget — the Made with Lovable text AND the floating close X button. Hide the parent #lovable-badge container, not just the text inside it. No empty box or orphaned X button should remain visible.";
+  var SP_REPLIT_WATERMARK_PROMPT = "Add this CSS to global or index page styles to completely hide the 'Made with Replit' branding/watermark badge in previews: .replit-badge, #replit-badge-root, .replit-watermark, iframe[src*='replit.com/repl-auth-frame'] { display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important; height: 0 !important; width: 0 !important; }";
 
   function setupSpWatermarkButton(){
     var btn = document.getElementById("sp-remove-watermark");
@@ -1536,16 +1577,25 @@
       btn.disabled = true;
       btn.textContent = "⏳ Sending...";
 
+      var activePlatform = spActivePlatform;
+      var prompt = activePlatform === "replit" ? SP_REPLIT_WATERMARK_PROMPT : SP_WATERMARK_PROMPT;
+
       try {
-        await sendPromptViaLovableTab(SP_WATERMARK_PROMPT);
-        log.className = "sp-log sp-log-success";
-        log.textContent = "✓ Prompt sent! Wait for Lovable to apply the CSS.";
+        if (activePlatform === "replit") {
+          await sendPromptViaPlatform(prompt, "replit");
+          log.className = "sp-log sp-log-success";
+          log.textContent = "✓ Prompt sent! Wait for Replit to apply the CSS.";
+        } else {
+          await sendPromptViaLovableTab(prompt);
+          log.className = "sp-log sp-log-success";
+          log.textContent = "✓ Prompt sent! Wait for Lovable to apply the CSS.";
+        }
       } catch(err) {
         log.className = "sp-log sp-log-error";
         log.textContent = "✗ " + (err.message || err);
       } finally {
         btn.disabled = false;
-        btn.textContent = "Remove Watermark";
+        btn.textContent = activePlatform === "replit" ? "🚫 Remove Replit Watermark" : "Remove Watermark";
       }
     });
   }

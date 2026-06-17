@@ -229,7 +229,8 @@ export async function POST(req) {
         message: message,
         modified_prompt: allowed ? modifiedPrompt : null,
         remaining_quota: rateCheck.remaining,
-        session_token: newSessionToken // Refreshed session token to slide window on client
+        session_token: newSessionToken, // Refreshed session token to slide window on client
+        session_id: newSessionToken // Compatibility key for sidepanel.js and content.js
       },
       { headers: corsHeaders() }
     );

@@ -151,6 +151,7 @@ export async function POST(req) {
         valid: true,
         allowed: true, // Compatibility key for chrome extension
         session_token: sessionId,
+        session_id: sessionId, // Compatibility key for sidepanel.js and content.js
         plan: plan,
         limits: rateLimits,
         expires_at: keyObj.expires_at || null,

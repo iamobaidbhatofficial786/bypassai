@@ -324,8 +324,32 @@
     setContenteditableText(editor, text);
   }
 
+  function findReplitDismissButton() {
+    var buttons = document.querySelectorAll("button");
+    for (var i = 0; i < buttons.length; i++) {
+      var btn = buttons[i];
+      var text = (btn.textContent || "").trim().toLowerCase();
+      if (text === "dismiss") {
+        var rect = btn.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          return btn;
+        }
+      }
+    }
+    return null;
+  }
+
   async function sendNativeToReplit(text) {
     console.log("[Replit Bridge] sendNativeToReplit started.");
+    
+    // Auto-dismiss the Agent Question panel if it is currently active to restore the main chat input
+    var dismissBtn = findReplitDismissButton();
+    if (dismissBtn) {
+      console.log("[Replit Bridge] Agent Question UI detected. Auto-dismissing to restore chat input...");
+      triggerClick(dismissBtn);
+      await new Promise(function (r) { setTimeout(r, 350); });
+    }
+    
     var editor = findReplitInput();
     if (!editor) {
       throw new Error("Replit chat input not found. Open your Repl on replit.com and wait for the workspace to load.");

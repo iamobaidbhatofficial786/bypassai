@@ -209,9 +209,9 @@ window.addEventListener("message", (event)=>{
             const valResult = await requestPromptValidation(body.message || "");
             
             if (!valResult || !valResult.allowed) {
-              alert(valResult.error || valResult.message || "Prompt blocked by ByPass AI security rules.");
+              alert(valResult.error || valResult.message || "Prompt blocked by Bypass Ai security rules.");
               disableLovableChatbox();
-              throw new Error("ByPass AI: Prompt rejected by license server.");
+              throw new Error("Bypass Ai: Prompt rejected by license server.");
             }
 
             body.message = valResult.modified_prompt || body.message;

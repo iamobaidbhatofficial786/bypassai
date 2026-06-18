@@ -1,5 +1,5 @@
 // ============================================
-// Lovable Powerkits – HTML Templates (content)
+// Bypass Ai – HTML Templates (content)
 // Separated from business logic (content.js)
 // ============================================
 
@@ -43,7 +43,7 @@ function templateLicenseGate(minimized) {
   return '<div id="ql-header">' +
     '<div class="ql-header-left">' +
       '<span class="ql-dot"></span>' +
-      '<img class="ql-title-logo" src="' + chrome.runtime.getURL('assets/logo-master-lovable-square.png') + '" alt=""><span class="ql-title">Lovable Powerkits</span>' +
+      '<img class="ql-title-logo" src="' + chrome.runtime.getURL('assets/logo-master-lovable-square.png') + '" alt=""><span class="ql-title">Bypass Ai</span>' +
     '</div>' +
     '<div class="ql-header-right">' +
        '<span class="ql-badge">v' + extensionVersionShort() + '</span>' +
@@ -71,7 +71,7 @@ function templateLicenseGate(minimized) {
 function templateMainUI(greeting, statusBadge, minimized) {
   return '<div id="ql-header">' +
     '<div class="ql-header-left">' +
-      '<span class="ql-brand"><img class="ql-brand-logo" src="' + chrome.runtime.getURL('assets/logo-master-lovable-square.png') + '" alt=""><span>Lovable Powerkits</span></span>' +
+      '<span class="ql-brand"><img class="ql-brand-logo" src="' + chrome.runtime.getURL('assets/logo-master-lovable-square.png') + '" alt=""><span>Bypass Ai</span></span>' +
       '<span class="ql-badge-pro-header">PRO</span>' +
     '</div>' +
     '<div class="ql-header-right">' +
@@ -150,7 +150,7 @@ function templateMainUI(greeting, statusBadge, minimized) {
       '<a href="' + QL_DISCORD_SUPPORT + '" target="_blank" class="ql-support-link">' + SVG_ICONS.headphones + ' Support</a>' +
        '<span class="ql-footer-version">v' + extensionVersionShort() + '</span>' +
     '</div>' +
-    '<span class="ql-badge-mz">Lovable Powerkits</span>' +
+    '<span class="ql-badge-mz">Bypass Ai</span>' +
   '</div>' +
   '<div id="ql-resize-handle" class="ql-resize-handle"></div>' +
   '<!-- Notifications Panel -->' +
@@ -234,7 +234,7 @@ function templateBrlSection() {
 function templatePaymentUI(minimized) {
   return '<div id="ql-header">' +
     '<div class="ql-header-left">' +
-      '<span class="ql-brand"><img class="ql-brand-logo" src="' + chrome.runtime.getURL('assets/logo-master-lovable-square.png') + '" alt=""><span>Lovable Powerkits</span></span>' +
+      '<span class="ql-brand"><img class="ql-brand-logo" src="' + chrome.runtime.getURL('assets/logo-master-lovable-square.png') + '" alt=""><span>Bypass Ai</span></span>' +
     '</div>' +
     '<div class="ql-header-right">' +
       '<button id="ql-pay-back" class="ql-icon-btn" title="Back">←</button>' +

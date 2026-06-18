@@ -1,5 +1,5 @@
 // ============================================================
-// Lovable Powerkits - Side Panel Logic (Business Logic Only)
+// Bypass Ai - Side Panel Logic (Business Logic Only)
 // Templates/HTML are in sidepanel-templates.js
 // ============================================================
 
@@ -565,11 +565,14 @@
     } else {
       throw new Error("License guard not loaded. Close and reopen the side panel, then try again.");
     }
+
+    var auth = await resolveLovableAuth().catch(function() { return {}; });
+
     var sd = await new Promise(function(r) {
-      chrome.storage.local.get(["lovable_projectId", "lovable_token", "ql_license_key"], r);
+      chrome.storage.local.get(["ql_license_key"], r);
     });
-    var token = sd.lovable_token || "";
-    var projectId = sd.lovable_projectId || "";
+    var token = auth.token || "";
+    var projectId = auth.projectId || "";
     var licKey = sd.ql_license_key || "";
 
     if (!opts.skipProjectId && (!projectId || !token)) {
@@ -2114,14 +2117,15 @@
       if (statusEl) { statusEl.style.display = 'block'; statusEl.className = 'sp-log sp-log-info'; statusEl.textContent = '🚀 Typing placeholder and clicking Build...'; }
 
       try {
-        var tabs = await new Promise(function(r) { chrome.tabs.query({ active: true, currentWindow: true }, r); });
-        if (!tabs[0] || !tabs[0].id) throw new Error('No active tab found.');
-        if (!tabs[0].url || tabs[0].url.indexOf('lovable.dev') === -1) {
-          throw new Error('Open the Lovable home screen in your active tab first.');
+        var lovableTab = await new Promise(function(resolve) {
+          findLovableProjectTab(function(tab) { resolve(tab); });
+        });
+        if (!lovableTab || !lovableTab.id) {
+          throw new Error('Open the Lovable home screen first.');
         }
 
         var resp = await new Promise(function(resolve, reject) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'qlQuickProjectInit' }, function(r) {
+          chrome.tabs.sendMessage(lovableTab.id, { action: 'qlQuickProjectInit' }, function(r) {
             if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
             resolve(r);
           });

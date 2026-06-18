@@ -1,5 +1,5 @@
 /**
- * Lovable Powerkits — license enforcement (client).
+ * Bypass Ai — license enforcement (client).
  * Requires an active PK- license validated by lov.powerkits.net before protected actions.
  */
 (function () {

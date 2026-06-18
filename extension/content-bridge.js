@@ -156,7 +156,7 @@
     if (!chatForm) throw new Error("Lovable chat not found. Open your project on lovable.dev.");
     var editor = chatForm.querySelector('[contenteditable="true"]');
     if (!editor) throw new Error("Chat editor not found. Wait for the page to finish loading.");
-    var sendBtn = document.getElementById("chatinput-send-message-button");
+    var sendBtn = document.getElementById("chatinput-send-message-button") || chatForm.querySelector('button[type="submit"]') || chatForm.querySelector('button');
     if (!sendBtn) throw new Error("Send button not found.");
     editor.focus();
     document.execCommand("selectAll", false, null);

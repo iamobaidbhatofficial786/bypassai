@@ -1,4 +1,4 @@
-console.log("[Background] Lovable Powerkits service worker started");
+console.log("[Background] Bypass Ai service worker started");
 
 try {
   importScripts("extension-config.js");
@@ -361,18 +361,93 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
+async function getOrCreateKeypair() {
+  const stored = await new Promise(r => chrome.storage.local.get(["ql_device_private_key", "ql_device_public_key"], r));
+  if (stored.ql_device_private_key && stored.ql_device_public_key) {
+    try {
+      const privateKey = await crypto.subtle.importKey(
+        "jwk",
+        JSON.parse(stored.ql_device_private_key),
+        { name: "ECDSA", namedCurve: "P-256" },
+        true,
+        ["sign"]
+      );
+      const publicKey = await crypto.subtle.importKey(
+        "jwk",
+        JSON.parse(stored.ql_device_public_key),
+        { name: "ECDSA", namedCurve: "P-256" },
+        true,
+        ["verify"]
+      );
+      return { privateKey, publicKey, pubKeyJwkBase64: stored.ql_device_public_key };
+    } catch (e) {
+      console.error("[Background] Key import failed, re-generating...", e);
+    }
+  }
+
+  const keyPair = await crypto.subtle.generateKey(
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign", "verify"]
+  );
+
+  const privateKeyJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+  const publicKeyJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+
+  const privateKeyJwkString = JSON.stringify(privateKeyJwk);
+  const publicKeyJwkString = JSON.stringify(publicKeyJwk);
+
+  await new Promise(r => chrome.storage.local.set({
+    ql_device_private_key: privateKeyJwkString,
+    ql_device_public_key: publicKeyJwkString
+  }, r));
+
+  return {
+    privateKey: keyPair.privateKey,
+    publicKey: keyPair.publicKey,
+    pubKeyJwkBase64: publicKeyJwkString
+  };
+}
+
+async function signMessage(privateKey, textToSign) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(textToSign);
+  const signatureBuffer = await crypto.subtle.sign(
+    { name: "ECDSA", hash: { name: "SHA-256" } },
+    privateKey,
+    data
+  );
+  
+  const bytes = new Uint8Array(signatureBuffer);
+  let binaryString = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binaryString += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binaryString);
+}
+
 async function checkPromptBeforeDelivery(message) {
   // 1. Get stored license information
   const storageData = await new Promise(r => chrome.storage.local.get(["ql_session_id", "ql_device_id", "ql_hw_fingerprint", "ql_license_api_base"], r));
   const sessionToken = storageData.ql_session_id || "";
   if (!sessionToken) {
-    throw new Error("Activate your ByPass AI license in the extension side panel first!");
+    throw new Error("Activate your Bypass Ai license in the extension side panel first!");
   }
   let deviceId = storageData.ql_hw_fingerprint || storageData.ql_device_id || "";
   
   if (!deviceId) {
     deviceId = "dev_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
     await chrome.storage.local.set({ ql_hw_fingerprint: deviceId });
+  }
+
+  // Generate cryptographic signature of prompt + timestamp
+  let signature = "";
+  let timestamp = Date.now();
+  try {
+    const keys = await getOrCreateKeypair();
+    signature = await signMessage(keys.privateKey, (message || "") + "." + timestamp);
+  } catch (e) {
+    console.error("[Background] Failed to sign prompt:", e);
   }
 
   // 2. Call Vercel /api/prompt/check
@@ -387,7 +462,9 @@ async function checkPromptBeforeDelivery(message) {
     body: JSON.stringify({
       session_token: sessionToken,
       prompt: message || "",
-      device_id: deviceId
+      device_id: deviceId,
+      timestamp: timestamp,
+      signature: signature
     })
   });
   
@@ -487,7 +564,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           method: msg.method || "POST",
           headers: msg.headers || {},
         };
-        if (msg.body) opts.body = msg.body;
+        var requestBody = msg.body;
+
+        // Auto-inject cryptographic signatures on license verification
+        if (msg.url.indexOf("/api/license/verify") !== -1 && (msg.method || "POST").toUpperCase() === "POST" && requestBody) {
+          try {
+            var bodyObj = JSON.parse(requestBody);
+            if (bodyObj.license_key && bodyObj.device_id) {
+              const keys = await getOrCreateKeypair();
+              const timestamp = Date.now();
+              const messageToSign = bodyObj.license_key.trim().toUpperCase() + "." + timestamp;
+              const signature = await signMessage(keys.privateKey, messageToSign);
+              
+              bodyObj.signature = signature;
+              bodyObj.timestamp = timestamp;
+              bodyObj.device_public_key = keys.pubKeyJwkBase64;
+              requestBody = JSON.stringify(bodyObj);
+            }
+          } catch (e) {
+            console.error("[Background] Failed to inject signature into verify request:", e);
+          }
+        }
+
+        if (requestBody) opts.body = requestBody;
         var resp = await fetch(msg.url, opts);
         var text = await resp.text();
         var data;
@@ -591,7 +690,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.action === "downloadProject") {
     (async function () {
       try {
-        var apiUrl = "https://lovable-api.com/projects/" + msg.projectId + "/source-code";
+        var apiUrl = "https://api.lovable.dev/projects/" + msg.projectId + "/source-code";
         var resp = await fetch(apiUrl, {
           method: "GET",
           headers: {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { findKey, saveKey, saveSession, logAudit, getSystemSettings, generateStatelessToken } from '@/lib/db';
-import crypto from 'crypto';
+import { findKey, saveKey, saveSession, logAudit, getSystemSettings, generateStatelessToken, verifyEcdsaSignature } from '@/lib/db';
+import { validate, verifyLicenseSchema } from '@/middleware/validation';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,8 +28,10 @@ export async function POST(req) {
       );
     }
 
-    const body = await req.json().catch(() => ({}));
-    const { license_key, device_id } = body;
+    const validationResult = await validate(verifyLicenseSchema, req);
+    if (validationResult) return validationResult;
+    const body = await req.json();
+    const { license_key, device_id, device_public_key, timestamp, signature } = body;
 
     if (!license_key) {
       return NextResponse.json(
@@ -57,7 +60,7 @@ export async function POST(req) {
       );
     }
 
-    // Check expiration (only if the key is activated, or has a fixed expiry date without validity_minutes)
+    // Check expiration
     const now = new Date();
     if (keyObj.expires_at && (!keyObj.validity_minutes || keyObj.activated_at) && new Date(keyObj.expires_at) < now) {
       keyObj.status = 'expired';
@@ -69,27 +72,57 @@ export async function POST(req) {
       );
     }
 
-    // Initialize devices list if missing
+    // Initialize fields if missing
     if (!keyObj.devices) {
       keyObj.devices = [];
+    }
+    if (!keyObj.device_public_keys) {
+      keyObj.device_public_keys = {};
     }
 
     let keyUpdated = false;
     const cleanDeviceId = device_id ? String(device_id).trim() : '';
 
-    // Manage device association
     if (cleanDeviceId) {
-      if (!keyObj.devices.includes(cleanDeviceId)) {
-        // Enforce plan-specific device limits
+      // 1. Replay attack check for signed requests
+      if (signature && timestamp) {
+        const nowMs = Date.now();
+        const requestTime = parseInt(timestamp);
+        if (isNaN(requestTime) || Math.abs(nowMs - requestTime) > 5 * 60 * 1000) {
+          return NextResponse.json(
+            { valid: false, message: 'Request signature out of sync. Please synchronize device clock.' },
+            { headers: corsHeaders() }
+          );
+        }
+      }
+
+      // 2. Cryptographic signature check if public key is already registered for this device ID
+      const registeredPublicKey = keyObj.device_public_keys[cleanDeviceId];
+      if (registeredPublicKey) {
+        if (!signature || !timestamp) {
+          return NextResponse.json(
+            { valid: false, message: 'Cryptographic signature required for this registered device.' },
+            { headers: corsHeaders() }
+          );
+        }
+        const messageToVerify = `${cleanKey}.${timestamp}`;
+        const isVerified = verifyEcdsaSignature(registeredPublicKey, messageToVerify, signature);
+        if (!isVerified) {
+          await logAudit(cleanKey, 'security_alert', `ECDSA signature verification failed for device ${cleanDeviceId}`, ip);
+          return NextResponse.json(
+            { valid: false, message: 'Cryptographic signature verification failed.' },
+            { headers: corsHeaders() }
+          );
+        }
+      } 
+      // 3. New device registering with a signature and public key
+      else if (device_public_key && signature && timestamp) {
+        // Enforce plan-specific device limits first
         const plan = keyObj.plan || 'pro';
-        const PLAN_MAX_DEVICES = {
-          free: 1,
-          pro: 2,
-          enterprise: 5
-        };
+        const PLAN_MAX_DEVICES = { free: 1, pro: 2, enterprise: 5 };
         const allowedMax = keyObj.max_devices || PLAN_MAX_DEVICES[plan] || 2;
 
-        if (keyObj.devices.length >= allowedMax) {
+        if (!keyObj.devices.includes(cleanDeviceId) && keyObj.devices.length >= allowedMax) {
           await logAudit(cleanKey, 'verify_failed', `Device limit reached (${keyObj.devices.length}/${allowedMax}) for device ${cleanDeviceId}`, ip);
           return NextResponse.json(
             {
@@ -100,9 +133,55 @@ export async function POST(req) {
             { headers: corsHeaders() }
           );
         }
-        keyObj.devices.push(cleanDeviceId);
+
+        // Verify initial registration signature to prove private key ownership
+        const messageToVerify = `${cleanKey}.${timestamp}`;
+        const isVerified = verifyEcdsaSignature(device_public_key, messageToVerify, signature);
+        if (!isVerified) {
+          return NextResponse.json(
+            { valid: false, message: 'Initial device key registration signature failed.' },
+            { headers: corsHeaders() }
+          );
+        }
+
+        if (!keyObj.devices.includes(cleanDeviceId)) {
+          keyObj.devices.push(cleanDeviceId);
+        }
+        keyObj.device_public_keys[cleanDeviceId] = device_public_key;
         keyUpdated = true;
-        await logAudit(cleanKey, 'device_register', `Registered device ${cleanDeviceId}`, ip);
+        await logAudit(cleanKey, 'device_register', `Registered cryptographic public key for device ${cleanDeviceId}`, ip);
+      } 
+      // 4. Fallback to standard check (warn/log in audit) if no signature/public key provided (legacy fallback)
+      else {
+        // If they try to verify without signature but a public key was registered, block them
+        const deviceHasAnyKey = Object.keys(keyObj.device_public_keys).length > 0;
+        if (deviceHasAnyKey) {
+          return NextResponse.json(
+            { valid: false, message: 'Security enforcement: Cryptographic request signature is required.' },
+            { headers: corsHeaders() }
+          );
+        }
+
+        if (!keyObj.devices.includes(cleanDeviceId)) {
+          const plan = keyObj.plan || 'pro';
+          const PLAN_MAX_DEVICES = { free: 1, pro: 2, enterprise: 5 };
+          const allowedMax = keyObj.max_devices || PLAN_MAX_DEVICES[plan] || 2;
+
+          if (keyObj.devices.length >= allowedMax) {
+            await logAudit(cleanKey, 'verify_failed', `Device limit reached (${keyObj.devices.length}/${allowedMax}) for device ${cleanDeviceId}`, ip);
+            return NextResponse.json(
+              {
+                valid: false,
+                reason: 'device_conflict',
+                message: `Device limit reached (${keyObj.devices.length}/${allowedMax}). Reset devices via your admin dashboard.`,
+              },
+              { headers: corsHeaders() }
+            );
+          }
+          keyObj.devices.push(cleanDeviceId);
+          keyUpdated = true;
+          await logAudit(cleanKey, 'device_register', `Registered device ${cleanDeviceId} (Legacy Mode - No Cryptographic Keys)`, ip);
+        }
       }
     }
 
@@ -121,9 +200,9 @@ export async function POST(req) {
     }
 
     const plan = keyObj.plan || 'pro';
-    const sessionExpiry = new Date(now.getTime() + 20 * 60 * 1000).toISOString(); // 20 minutes short-lived
+    const sessionExpiry = new Date(now.getTime() + 20 * 60 * 1000).toISOString(); // 20 minutes short-lived JWT
     
-    // Generate active session ID (stateless signed token)
+    // Generate active session JWT
     const sessionData = {
       key: keyObj.key,
       device_id: cleanDeviceId,
@@ -133,7 +212,7 @@ export async function POST(req) {
     };
     const sessionId = generateStatelessToken(sessionData);
     
-    // Save session
+    // Save session in DB
     await saveSession({
       session_id: sessionId,
       key: keyObj.key,
@@ -161,7 +240,7 @@ export async function POST(req) {
       { headers: corsHeaders() }
     );
   } catch (error) {
-    console.error('License verify endpoint error:', error);
+    logger.error('License verify endpoint error', { error: error.message, stack: error.stack, ip });
     return NextResponse.json(
       { valid: false, message: 'Internal Server Error.' },
       { status: 500, headers: corsHeaders() }

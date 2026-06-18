@@ -4,38 +4,19 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-// Helper to authenticate admin token
-function verifyAdmin(req) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  const token = authHeader.substring(7);
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-  const expectedHash = crypto
-    .createHash('sha256')
-    .update(adminPassword + 'LovablePowerkitsSalt')
-    .digest('hex');
-  return token === `adm_${expectedHash}`;
-}
+import adminAuth from '@/middleware/adminAuth';
 
-export async function GET(req) {
-  if (!verifyAdmin(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export const GET = adminAuth(async (req) => {
   try {
     const sessions = await listActiveSessions();
     return NextResponse.json(sessions);
   } catch (error) {
-    console.error('List Sessions API error:', error);
+    logger.error('List Sessions API error:', { error: error.message, stack: error.stack });
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(req) {
-  if (!verifyAdmin(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export const DELETE = adminAuth(async (req) => {
   try {
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get('session_id');
@@ -51,7 +32,7 @@ export async function DELETE(req) {
 
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   } catch (error) {
-    console.error('Delete Session API error:', error);
+    logger.error('Delete Session API error:', { error: error.message, stack: error.stack });
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});

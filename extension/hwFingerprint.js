@@ -1,5 +1,5 @@
 // ============================================
-// Lovable Powerkits – Hardware Fingerprint
+// Bypass Ai – Hardware Fingerprint
 // Generates a stable device hash from hardware
 // attributes that persist across browsers/cache
 // ============================================

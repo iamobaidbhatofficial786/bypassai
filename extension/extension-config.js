@@ -1,7 +1,7 @@
 /**
- * ByPass Ai — extension configuration
+ * Bypass Ai — extension configuration
  */
-var EXTENSION_NAME = "ByPass Ai";
+var EXTENSION_NAME = "Bypass Ai";
 var EXTENSION_VERSION = "6.4.4";
 var DEFAULT_LICENSE_USER_NAME = "Licensed User";
 
@@ -11,7 +11,7 @@ function extensionVersionShort() {
 }
 
 function extensionFooterBadge() {
-  var name = typeof EXTENSION_NAME !== "undefined" ? String(EXTENSION_NAME) : "ByPass Ai";
+  var name = typeof EXTENSION_NAME !== "undefined" ? String(EXTENSION_NAME) : "Bypass Ai";
   return name + " • v" + extensionVersionShort();
 }
 

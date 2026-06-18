@@ -1,4 +1,4 @@
-// Lovable Powerkits - Sound System v6.0
+// Bypass Ai - Sound System v6.0
 // Plays categorized audio cues for success/error events.
 (function(global){
   var _ctx = null;

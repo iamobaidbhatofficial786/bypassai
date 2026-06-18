@@ -1,5 +1,5 @@
 // ============================================================
-// Lovable Powerkits - Side Panel Templates (Static/HTML)
+// Bypass Ai - Side Panel Templates (Static/HTML)
 // Separated from business logic for easier maintenance
 // ============================================================
 

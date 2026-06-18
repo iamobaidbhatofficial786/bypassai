@@ -1,9 +1,9 @@
 // ============================================
-// Lovable Powerkits – Business Logic (content)
+// Bypass Ai – Business Logic (content)
 // HTML templates are in content-templates.js
 // ============================================
 
-console.log("[ContentScript] Lovable Powerkits loaded");
+console.log("[ContentScript] Bypass Ai loaded");
 
 const API_BASE = typeof POWERKITS_API_BASE !== "undefined" ? POWERKITS_API_BASE : GRINGOW_API_BASE;
 function getLicenseApiBase() {
@@ -1301,7 +1301,7 @@ function injectShieldOverlay(){
   overlay.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' +
     '</svg>' +
-    '<span class="ql-shield-overlay-text">🛡️ Protected by Lovable Powerkits</span>' +
+    '<span class="ql-shield-overlay-text">🛡️ Protected by Bypass Ai</span>' +
     '<span class="ql-shield-overlay-sub">Use the extension to send prompts</span>';
 
   overlay.addEventListener('click', (e) => {
@@ -1478,7 +1478,7 @@ async function showPaymentUI(box, preselectedPkg){
       var idx = parseInt(card.getAttribute("data-brl-idx"), 10) || 0;
       var plan = QL_BRL_PLANS[idx];
       if(!plan) return;
-      var msg = "Hello! 👋 I am interested in the *" + plan.name + "* plan for Lovable Powerkits (R$ " + plan.price + " - " + plan.period + ").\n\nOpen Discord support for more information.";
+      var msg = "Hello! 👋 I am interested in the *" + plan.name + "* plan for Bypass Ai (R$ " + plan.price + " - " + plan.period + ").\n\nOpen Discord support for more information.";
       var url = DISCORD_URL;
       window.open(url, "_blank", "noopener,noreferrer");
     });
@@ -2621,26 +2621,29 @@ function deactivateNativeChat() {
   if (returnBtn) returnBtn.remove();
 
   // Restore send button
-  const sendBtn = document.getElementById("chatinput-send-message-button");
+  const chatForm = document.querySelector("form#chat-input");
+  const sendBtn = document.getElementById("chatinput-send-message-button") || (chatForm && (chatForm.querySelector('button[type="submit"]') || chatForm.querySelector('button')));
   if (sendBtn) {
     sendBtn.classList.remove("ql-native-send-active");
     sendBtn.style.animation = "";
   }
 
-  // Show the extension again
-  const floatingBox = document.getElementById("ql-floating");
-  if (floatingBox) {
-    floatingBox.style.display = "";
-    floatingBox.style.opacity = "0";
-    floatingBox.style.transform = "scale(0.95)";
-    requestAnimationFrame(() => {
-      floatingBox.style.transition = "opacity 0.4s ease, transform 0.4s ease";
-      floatingBox.style.opacity = "1";
-      floatingBox.style.transform = "scale(1) translateX(0)";
-    });
-  } else {
-    // Rebuild if removed
-    _buildFloatingUI();
+  // Show the extension again if not in side panel only mode
+  if (typeof SIDE_PANEL_ONLY === "undefined" || !SIDE_PANEL_ONLY) {
+    const floatingBox = document.getElementById("ql-floating");
+    if (floatingBox) {
+      floatingBox.style.display = "";
+      floatingBox.style.opacity = "0";
+      floatingBox.style.transform = "scale(0.95)";
+      requestAnimationFrame(() => {
+        floatingBox.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+        floatingBox.style.opacity = "1";
+        floatingBox.style.transform = "scale(1) translateX(0)";
+      });
+    } else {
+      // Rebuild if removed
+      _buildFloatingUI();
+    }
   }
 }
 
@@ -2660,7 +2663,7 @@ function injectNativeChatOverlay() {
     const badge = document.createElement("div");
     badge.id = "ql-native-badge";
     badge.className = "ql-native-badge";
-    badge.innerHTML = "⚡ <span>Lovable Powerkits</span>";
+    badge.innerHTML = "⚡ <span>Bypass Ai</span>";
     chatForm.appendChild(badge);
   }
 
@@ -2885,6 +2888,16 @@ chrome.storage.local.get(["ql_native_chat"], (res) => {
   }
 });
 
+// Check if input shield was active on page load
+chrome.storage.local.get(["ql_shield_active"], (res) => {
+  if (res.ql_shield_active === true) {
+    qlShieldActive = true;
+    setTimeout(() => {
+      injectShieldOverlay();
+    }, 500);
+  }
+});
+
 window.addEventListener("message", (event)=>{
   if(!event.data || event.source !== window) return;
   if(event.data.type === "lovableBrowserSession" && event.data.browserSessionId){
@@ -2968,7 +2981,7 @@ async function quickProjectInit() {
   const editor = chatForm.querySelector('[contenteditable="true"]');
   if (!editor) throw new Error('Text field not found.');
 
-  const buildBtn = document.getElementById('chatinput-send-message-button');
+  const buildBtn = document.getElementById('chatinput-send-message-button') || chatForm.querySelector('button[type="submit"]') || chatForm.querySelector('button');
   if (!buildBtn) throw new Error('Build button not found.');
 
   editor.focus();

@@ -1,11 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
-  experimental: {
+  turbopack: {
     // Ensure Turbopack can resolve the project root correctly
-    turbopack: {
-      root: __dirname,
-    },
+    root: process.cwd(),
   },
 };
 

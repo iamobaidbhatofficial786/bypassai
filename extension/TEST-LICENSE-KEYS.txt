@@ -1,5 +1,5 @@
-Lovable Powerkits — Dev Test License Keys
-=========================================
+Bypass Ai — Dev Test License Keys
+=================================
 
 DEV_LICENSE_MODE is ON in extension-config.js. Paste any key below into the
 side panel license gate to test activation without the live server.
@@ -14,7 +14,7 @@ PK-DEV-TEST-005   Active, 24 hours    (user: Day Pass)
 
 How to test
 -----------
-1. Open chrome://extensions and reload "Lovable Powerkits".
+1. Open chrome://extensions and reload "Bypass Ai".
 2. Open the extension side panel on lovable.dev.
 3. Paste one of the keys above and click Activate.
 4. Confirm the main UI loads and features unlock.

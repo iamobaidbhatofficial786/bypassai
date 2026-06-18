@@ -37,13 +37,9 @@ export default function Dashboard() {
   });
 
   // Load auth state on mount
-  useEffect(() => {
-    const savedToken = localStorage.getItem('adm_sess_tok');
-    if (savedToken) {
-      setToken(savedToken);
-      setIsLoggedIn(true);
-    }
-  }, []);
+  // On mount, we do not persist token in localStorage; the session lasts only while the page is open.
+  // No token is loaded automatically.
+
 
   // Fetch data periodically
   useEffect(() => {
@@ -113,7 +109,6 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (data.success && data.token) {
-        localStorage.setItem('adm_sess_tok', data.token);
         setToken(data.token);
         setIsLoggedIn(true);
       } else {
@@ -125,12 +120,32 @@ export default function Dashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('adm_sess_tok');
+    // Token is cleared from state only; no localStorage used.
     setToken('');
     setPassword('');
     setIsLoggedIn(false);
     setKeys([]);
     setSessions([]);
+  };
+
+  // New handler to delete all license keys
+  const handleDeleteAll = async () => {
+    if (!confirm('⚠️ Are you sure you want to DELETE ALL license keys? This action cannot be undone.')) return;
+    try {
+      const res = await fetch('/api/keys', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'All license keys revoked');
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to delete all license keys');
+      }
+    } catch (e) {
+      alert('Network error while deleting all license keys');
+    }
   };
 
   const handleToggleSystemLock = async (locked) => {
@@ -463,6 +478,9 @@ export default function Dashboard() {
           </button>
           <button onClick={handleLogout} className="btn btn-danger">
             ❌ Sign Out
+          </button>
+          <button onClick={handleDeleteAll} className="btn btn-danger" style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}>
+            🗑️ Delete All Licenses
           </button>
         </div>
       </header>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listKeys, saveKey, deleteKey, findKey } from '@/lib/db';
+import { listKeys, saveKey, deleteKey, findKey, deleteAllKeys } from '@/lib/db';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -130,7 +130,12 @@ export async function DELETE(req) {
     const key = searchParams.get('key');
 
     if (!key) {
-      return NextResponse.json({ error: 'Key parameter is required' }, { status: 400 });
+      // Bulk delete all license keys
+      const deleted = await deleteAllKeys();
+      if (deleted) {
+        return NextResponse.json({ success: true, message: 'All license keys revoked' });
+      }
+      return NextResponse.json({ error: 'Failed to delete all keys' }, { status: 500 });
     }
 
     const deleted = await deleteKey(key.trim().toUpperCase());
